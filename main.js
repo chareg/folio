@@ -1,4 +1,4 @@
-const { app, BrowserWindow, ipcMain, dialog, shell, nativeTheme } = require("electron");
+const { app, BrowserWindow, ipcMain, dialog, shell, nativeTheme, Menu } = require("electron");
 const path = require("path");
 const fs = require("fs");
 const { autoUpdater } = require("electron-updater");
@@ -6,6 +6,8 @@ const { autoUpdater } = require("electron-updater");
 let win = null;
 let pending = null; // a file asked for before the window was ready
 let ready = false;
+let dirty = false;      // unsaved edits in the window
+let closing = false;    // the user already agreed to close
 
 function docxFromArgs(argv) {
   return argv.slice(1).find((a) => /\.(docx|docm|dotx)$/i.test(a) && fs.existsSync(a)) || null;
@@ -16,7 +18,8 @@ function sendFile(file) {
   if (!win || !ready) { pending = file; return; }
   try {
     const bytes = fs.readFileSync(file);
-    win.webContents.send("open-file", { name: path.basename(file), path: file, bytes });
+    const mtimeMs = fs.statSync(file).mtimeMs;
+    win.webContents.send("open-file", { name: path.basename(file), path: file, bytes, mtimeMs });
     app.addRecentDocument && app.addRecentDocument(file);
   } catch (e) {
     dialog.showErrorBox("Folio couldn't open that file", String(e.message || e));
@@ -61,6 +64,19 @@ else {
       if (!url.startsWith("file:")) { e.preventDefault(); if (/^(https?|mailto):/i.test(url)) shell.openExternal(url); }
     });
     win.on("page-title-updated", (e, title) => { /* keep document titles in the taskbar */ });
+    // Unsaved edits: let the page ask the user (it has a nicer dialog than we do).
+    win.on("close", (e) => {
+      if (dirty && !closing) { e.preventDefault(); win.webContents.send("confirm-close"); }
+    });
+    // Right-click: the usual editing commands.
+    win.webContents.on("context-menu", (_e, params) => {
+      const items = [];
+      if (params.isEditable) {
+        items.push({ role: "cut", enabled: params.editFlags.canCut }, { role: "copy", enabled: params.editFlags.canCopy },
+          { role: "paste", enabled: params.editFlags.canPaste }, { type: "separator" }, { role: "selectAll" });
+      } else if (params.selectionText) items.push({ role: "copy" });
+      if (items.length) Menu.buildFromTemplate(items).popup({ window: win });
+    });
   });
 
   ipcMain.handle("open-dialog", async () => {
@@ -96,6 +112,71 @@ else {
   app.whenReady().then(() => setTimeout(() => { if (app.isPackaged) checkForUpdates(); }, 4000));
 
   ipcMain.on("toggle-fullscreen", () => { if (win) win.setFullScreen(!win.isFullScreen()); });
+
+  /* ---------- saving edits ---------- */
+  ipcMain.on("set-dirty", (_e, v) => { dirty = !!v; if (win) win.setDocumentEdited && win.setDocumentEdited(dirty); });
+  ipcMain.on("close-now", () => { closing = true; if (win) win.close(); });
+  ipcMain.handle("show-in-folder", (_e, p) => { if (typeof p === "string" && fs.existsSync(p)) shell.showItemInFolder(p); });
+  ipcMain.handle("save-docx", async (_e, req) => {
+    try { return await saveDocx(req || {}); } catch (e) { return { error: String((e && e.message) || e) }; }
+  });
+
+  function uniquePath(dir, base) {
+    let p = path.join(dir, base + ".docx");
+    for (let n = 2; fs.existsSync(p) && n < 1000; n++) p = path.join(dir, base.replace(/\)$/, " " + n + ")") + ".docx");
+    return p;
+  }
+
+  // Keep the version being replaced, so an overwrite is never the end of the world.
+  function backup(file) {
+    const dir = path.join(app.getPath("userData"), "Backups");
+    fs.mkdirSync(dir, { recursive: true });
+    const stamp = new Date().toISOString().replace(/[:T]/g, "-").replace(/\..+$/, "");
+    const dest = path.join(dir, path.basename(file, path.extname(file)) + " " + stamp + path.extname(file));
+    fs.copyFileSync(file, dest);
+    const all = fs.readdirSync(dir).map((f) => ({ f, t: fs.statSync(path.join(dir, f)).mtimeMs })).sort((a, b) => b.t - a.t);
+    all.slice(40).forEach((x) => { try { fs.unlinkSync(path.join(dir, x.f)); } catch (e) {} });
+    return dest;
+  }
+
+  // Write next to the target, then swap it in, so a failed save never leaves half a file.
+  function writeSafely(target, bytes) {
+    const tmp = path.join(path.dirname(target), "." + path.basename(target) + "." + process.pid + ".folio-tmp");
+    try {
+      fs.writeFileSync(tmp, Buffer.from(bytes));
+      fs.renameSync(tmp, target);
+    } catch (e) {
+      try { fs.unlinkSync(tmp); } catch (e2) {}
+      if (/EBUSY|EPERM|EACCES/.test(e.code || "")) return { error: "locked" };
+      throw e;
+    }
+    return null;
+  }
+
+  async function saveDocx(req) {
+    const bytes = req.bytes;
+    if (!bytes || !bytes.length) return { error: "nothing to save" };
+    let target;
+    if (req.mode === "copy") {
+      const dir = req.sourcePath ? path.dirname(req.sourcePath) : app.getPath("documents");
+      const base = (req.suggestedName || "Document (edited).docx").replace(/\.docx$/i, "").replace(/[\\/:*?"<>|]+/g, "-");
+      const r = await dialog.showSaveDialog(win, {
+        title: "Save a copy", defaultPath: uniquePath(dir, base), buttonLabel: "Save copy",
+        filters: [{ name: "Word document", extensions: ["docx"] }]
+      });
+      if (r.canceled || !r.filePath) return { canceled: true };
+      target = /\.docx$/i.test(r.filePath) ? r.filePath : r.filePath + ".docx";
+    } else {
+      target = req.path;
+      if (!target) return { error: "no file to replace" };
+      if (fs.existsSync(target) && req.expectedMtimeMs && Math.abs(fs.statSync(target).mtimeMs - req.expectedMtimeMs) > 2) return { conflict: true };
+    }
+    if (fs.existsSync(target)) backup(target);
+    const fail = writeSafely(target, bytes);
+    if (fail) return fail;
+    app.addRecentDocument && app.addRecentDocument(target);
+    return { ok: true, path: target, name: path.basename(target), mtimeMs: fs.statSync(target).mtimeMs };
+  }
 
   app.on("window-all-closed", () => app.quit());
 }

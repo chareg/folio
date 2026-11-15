@@ -296,7 +296,7 @@ main {
 .doc img.sized { display: inline-block; }
 .doc .crop { display: inline-block; overflow: hidden; max-width: 100%; vertical-align: middle; background: var(--img-mat); border-radius: var(--img-r); outline: var(--img-pad) solid var(--img-mat); outline-offset: 0; margin: var(--img-pad); }
 .doc .crop img { display: block; max-width: none; height: auto; padding: 0; border-radius: 0; background: none; object-fit: fill; }
-.doc p:has(> img:only-child) { text-align: center; margin: 1.6em 0; }
+.doc p.pic { text-align: center; margin: 1.6em 0; }
 .doc hr { border: 0; height: 1px; background: var(--rule); margin: 2.4em auto; width: 40%; }
 .doc sup, .doc sub { font-size: .7em; line-height: 0; }
 .doc sup a { text-decoration: none; font-family: var(--sans); font-weight: 600; padding: 0 .1em; }
@@ -392,6 +392,122 @@ body.focus .bar:hover, body.focus .bar:focus-within { opacity: 1; }
   .column { font-size: min(var(--fs), 18px); }
   .open-btn { padding: 0 10px; }
 }
+/* ---------- Edit mode ---------- */
+.docname[data-edited]::after {
+  content: "Edited"; margin-left: 9px; padding: 2px 8px; border-radius: 999px;
+  font-size: 10.5px; font-weight: 600; letter-spacing: .08em; text-transform: uppercase;
+  color: var(--accent); background: var(--accent-soft);
+}
+.icon-btn.edit-btn[aria-pressed="true"] { background: var(--accent-soft); color: var(--accent); }
+.doc.editing {
+  white-space: pre-wrap; tab-size: 4; hyphens: manual; -webkit-hyphens: manual;
+  caret-color: var(--accent); outline: none;
+}
+.doc.editing:focus { outline: none; }
+.doc.editing ::selection { background: color-mix(in srgb, var(--accent) 26%, transparent); }
+.doc.editing [data-locked] {
+  cursor: not-allowed; opacity: .62; border-radius: 6px;
+  background-image: repeating-linear-gradient(135deg, transparent 0 7px, color-mix(in srgb, var(--accent) 9%, transparent) 7px 8px);
+}
+.doc.editing [data-atom] { cursor: default; }
+.doc.editing [data-atom="img"]:hover { outline: 2px solid color-mix(in srgb, var(--accent) 45%, transparent); outline-offset: 2px; }
+.doc.editing [data-pb="after"]::after, .doc.editing [data-pb="before"]::before, .doc.editing [data-sect]::after {
+  display: block; content: "Page break"; margin: .7em 0 .2em; padding-top: .35em;
+  border-top: 1px dashed var(--rule); text-align: center; white-space: normal;
+  font: 600 10px/1.2 var(--sans); letter-spacing: .14em; text-transform: uppercase; color: var(--muted);
+  pointer-events: none; user-select: none; -webkit-user-select: none;
+}
+.doc.editing [data-pb="before"]::before { margin: .2em 0 .7em; padding: 0 0 .35em; border-top: 0; border-bottom: 1px dashed var(--rule); }
+.doc.editing [data-sect]::after { content: "Section break"; border-top-style: double; border-top-width: 3px; }
+body.is-editing main { padding-bottom: 160px; }
+body.is-editing .endmark { opacity: .25; }
+
+.dock {
+  position: fixed; z-index: 55; left: 50%; transform: translateX(-50%);
+  bottom: calc(20px + env(safe-area-inset-bottom, 0px));
+  display: flex; align-items: center; gap: 6px; padding: 7px 7px 7px 10px;
+  max-width: calc(100vw - 24px);
+  background: color-mix(in srgb, var(--bg-raise) 92%, transparent);
+  backdrop-filter: saturate(1.4) blur(14px); -webkit-backdrop-filter: saturate(1.4) blur(14px);
+  border: 1px solid var(--rule); border-radius: 18px; box-shadow: var(--shadow);
+  font-family: var(--sans); font-size: 13px; color: var(--fg-soft);
+  animation: dock-in .38s cubic-bezier(.2,.9,.25,1.25);
+}
+@keyframes dock-in { from { transform: translate(-50%, 24px) scale(.96); opacity: 0; } }
+.dock-group { display: flex; gap: 2px; }
+.dock-btn {
+  width: 34px; height: 34px; border: 0; border-radius: 10px; background: transparent; cursor: pointer;
+  display: grid; place-items: center; color: var(--fg-soft); font-size: 15px; font-family: var(--serif);
+  transition: background-color .15s ease, color .15s ease, transform .12s ease;
+}
+.dock-btn svg { width: 17px; height: 17px; }
+.dock-btn:hover:not(:disabled) { background: var(--accent-soft); color: var(--fg); }
+.dock-btn:active:not(:disabled) { transform: scale(.92); }
+.dock-btn[aria-pressed="true"] { background: var(--accent-soft); color: var(--accent); }
+.dock-btn:disabled { opacity: .35; cursor: default; }
+.dock-btn b { font-weight: 700; } .dock-btn u { text-underline-offset: 2px; }
+.dock-sep { width: 1px; height: 22px; background: var(--rule); margin: 0 4px; }
+.dock-status { display: inline-flex; align-items: center; gap: 7px; padding: 0 8px; white-space: nowrap; font-size: 12.5px; }
+.dock-status i { width: 7px; height: 7px; border-radius: 50%; background: var(--rule); transition: background-color .2s ease, box-shadow .2s ease; }
+.dock-status.dirty i { background: var(--accent); box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 22%, transparent); }
+.dock-save, .dock-done {
+  height: 34px; padding: 0 15px; border-radius: 11px; cursor: pointer; font-weight: 600; font-size: 13px;
+  transition: background-color .15s ease, color .15s ease, transform .12s ease;
+}
+.dock-save { border: 0; background: var(--accent); color: var(--bg); }
+.dock-save:hover:not(:disabled) { filter: brightness(1.08); }
+.dock-save:disabled { opacity: .55; cursor: progress; }
+.dock-done { border: 1px solid var(--rule); background: transparent; color: var(--fg); }
+.dock-done:hover { border-color: var(--accent); color: var(--accent); }
+.dock-save:active, .dock-done:active { transform: scale(.96); }
+
+.sheet-scrim {
+  position: fixed; inset: 0; z-index: 80; display: grid; place-items: center; padding: 20px;
+  background: color-mix(in srgb, var(--bg) 55%, rgb(0 0 0 / .28));
+  backdrop-filter: blur(5px); -webkit-backdrop-filter: blur(5px);
+  animation: scrim-in .18s ease;
+}
+.sheet-scrim.leaving { opacity: 0; transition: opacity .15s ease; }
+@keyframes scrim-in { from { opacity: 0; } }
+.sheet {
+  width: min(460px, 100%); background: var(--bg-raise); color: var(--fg);
+  border: 1px solid var(--rule); border-radius: 20px; box-shadow: var(--shadow);
+  padding: 24px; font-family: var(--sans); animation: sheet-in .32s cubic-bezier(.2,.9,.25,1.2);
+}
+@keyframes sheet-in { from { transform: translateY(14px) scale(.97); opacity: 0; } }
+.sheet h2 { margin: 0 0 4px; font-family: var(--serif); font-weight: 450; font-style: italic; font-size: 27px; letter-spacing: -.01em; }
+.sheet-sub { margin: 0 0 18px; color: var(--fg-soft); font-size: 13.5px; line-height: 1.5; }
+.choices { display: grid; gap: 10px; margin-bottom: 18px; }
+.choice {
+  display: flex; gap: 14px; align-items: flex-start; text-align: left; width: 100%;
+  padding: 14px 16px; border: 1px solid var(--rule); border-radius: 14px; background: var(--bg); cursor: pointer;
+  transition: border-color .15s ease, background-color .15s ease, transform .12s ease;
+}
+.choice:hover, .choice:focus-visible { border-color: var(--accent); background: var(--accent-soft); }
+.choice:active { transform: scale(.985); }
+.choice-ic { flex: none; width: 36px; height: 36px; border-radius: 11px; display: grid; place-items: center; background: var(--accent-soft); color: var(--accent); }
+.choice-ic svg { width: 19px; height: 19px; }
+.choice-txt { display: grid; gap: 3px; }
+.choice-txt strong { font-weight: 600; font-size: 14.5px; color: var(--fg); display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.choice-txt small { color: var(--fg-soft); font-size: 12.5px; line-height: 1.45; }
+.rec { font-style: normal; font-size: 10px; font-weight: 700; letter-spacing: .09em; text-transform: uppercase; color: var(--accent); background: var(--bg-raise); border: 1px solid color-mix(in srgb, var(--accent) 35%, transparent); padding: 2px 7px; border-radius: 999px; }
+.sheet-foot { display: flex; justify-content: flex-end; gap: 8px; flex-wrap: wrap; }
+.sheet-btn { height: 36px; padding: 0 16px; border-radius: 11px; font-weight: 600; font-size: 13px; cursor: pointer; border: 1px solid var(--rule); background: transparent; color: var(--fg); }
+.sheet-btn:hover { border-color: var(--accent); color: var(--accent); }
+.sheet-btn.primary { background: var(--accent); border-color: var(--accent); color: var(--bg); }
+.sheet-btn.primary:hover { filter: brightness(1.08); color: var(--bg); }
+.sheet-btn.danger:hover { border-color: #c2413b; color: #c2413b; }
+.toast-act { margin-left: 12px; border: 0; background: transparent; color: inherit; font-weight: 700; text-decoration: underline; text-underline-offset: 3px; cursor: pointer; padding: 0; }
+@media (max-width: 640px) {
+  .dock { left: 12px; right: 12px; transform: none; justify-content: space-between; gap: 2px; padding: 6px; }
+  @keyframes dock-in { from { transform: translateY(24px); opacity: 0; } }
+  .dock-status span { display: none; }
+  .dock-status { padding: 0 4px; }
+  .dock-sep { margin: 0 1px; }
+  .dock-btn { width: 32px; }
+  .dock-save, .dock-done { padding: 0 11px; }
+}
+
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { transition: none !important; animation: none !important; }
   html { scroll-behavior: auto !important; }
@@ -407,6 +523,10 @@ body.focus .bar:hover, body.focus .bar:focus-within { opacity: 1; }
     <span class="docname" id="docname">Sample document</span>
   </div>
   <div class="tools">
+    <button class="icon-btn edit-btn" id="editBtn" aria-pressed="false" title="Edit text (Ctrl+E)">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M4 20h4.2L19.4 8.8a2.1 2.1 0 0 0 0-3L18.2 4.6a2.1 2.1 0 0 0-3 0L4 15.8V20z"/><path d="m13.5 6.5 4 4"/></svg>
+      <span class="btn-label">Edit</span>
+    </button>
     <button class="icon-btn" id="focusBtn" aria-pressed="false" title="Focus mode (F)">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M4 9V5h4M20 9V5h-4M4 15v4h4M20 15v4h-4"/></svg>
       <span class="btn-label">Focus</span>
@@ -487,11 +607,1890 @@ body.focus .bar:hover, body.focus .bar:focus-within { opacity: 1; }
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/mammoth@1.8.0/mammoth.browser.min.js"></script>
 <script>
+/*
+ * Folio document model.
+ *
+ * Folio shows a .docx through mammoth, which throws away anything it can't
+ * display (letterheads, fonts, colours, spacing, section layout...). So edits
+ * are never written back from the HTML. Instead this model keeps the original
+ * word/document.xml as a live XML DOM and applies each edit to it in place:
+ * characters are spliced into the existing <w:t> nodes, runs are split only
+ * where formatting changes, and every element Folio doesn't understand is
+ * left exactly as it was.
+ *
+ * Paragraphs are tagged with a temporary folio:pid attribute so the editor can
+ * pair each one with the block it rendered. The attribute is stripped on save.
+ *
+ * Works in the browser and in Node (with @xmldom/xmldom) so it can be tested.
+ */
+(function (global) {
+  "use strict";
+
+  var W = "http://schemas.openxmlformats.org/wordprocessingml/2006/main";
+  var A = "http://schemas.openxmlformats.org/drawingml/2006/main";
+  var V = "urn:schemas-microsoft-com:vml";
+  var MC = "http://schemas.openxmlformats.org/markup-compatibility/2006";
+  var W14 = "http://schemas.microsoft.com/office/word/2010/wordml";
+  var XML_NS = "http://www.w3.org/XML/1998/namespace";
+  var FNS = "urn:folio:edit";
+  var OBJ = "￼";  // a picture or a note reference
+  var WILD = ""; // a w:sym: mammoth draws some glyph, so it matches any character
+
+  // Run property order from the schema (CT_RPr). Word rejects out-of-order children.
+  var RPR_ORDER = ["rStyle", "rFonts", "b", "bCs", "i", "iCs", "caps", "smallCaps", "strike", "dstrike",
+    "outline", "shadow", "emboss", "imprint", "noProof", "snapToGrid", "vanish", "webHidden", "color",
+    "spacing", "w", "kern", "position", "sz", "szCs", "highlight", "u", "effect", "bdr", "shd", "fitText",
+    "vertAlign", "rtl", "cs", "em", "lang", "eastAsianLayout", "specVanish", "oMath"];
+  var RPR_INDEX = {};
+  RPR_ORDER.forEach(function (n, i) { RPR_INDEX[n] = i; });
+
+  // Things that may sit between two paragraphs without belonging to either.
+  var MARKERS = { bookmarkStart: 1, bookmarkEnd: 1, proofErr: 1, permStart: 1, permEnd: 1,
+    commentRangeStart: 1, commentRangeEnd: 1, moveFromRangeStart: 1, moveFromRangeEnd: 1,
+    moveToRangeStart: 1, moveToRangeEnd: 1, customXmlInsRangeStart: 1, customXmlInsRangeEnd: 1,
+    customXmlDelRangeStart: 1, customXmlDelRangeEnd: 1 };
+
+  var FORMAT_TAGS = { b: ["b", "bCs"], i: ["i", "iCs"], u: ["u"], s: ["strike"] };
+
+  /* ---------- small DOM helpers ---------- */
+  function isW(n, name) { return !!n && n.nodeType === 1 && n.namespaceURI === W && (!name || n.localName === name); }
+  function firstW(el, name) {
+    for (var c = el.firstChild; c; c = c.nextSibling) if (isW(c, name)) return c;
+    return null;
+  }
+  function firstNS(el, ns, name) {
+    for (var c = el.firstChild; c; c = c.nextSibling) if (c.nodeType === 1 && c.namespaceURI === ns && c.localName === name) return c;
+    return null;
+  }
+  function attr(el, name) {
+    if (!el.hasAttributeNS(W, name)) return null;
+    return el.getAttributeNS(W, name);
+  }
+  function hasDesc(el, ns, name) { return el.getElementsByTagNameNS(ns, name).length > 0; }
+  function ancestor(el, ns, name) {
+    for (var n = el.parentNode; n && n.nodeType === 1; n = n.parentNode) if (n.namespaceURI === ns && n.localName === name) return n;
+    return null;
+  }
+  function textOf(t) {
+    var s = "";
+    for (var c = t.firstChild; c; c = c.nextSibling) if (c.nodeType === 3 || c.nodeType === 4) s += c.data;
+    return s;
+  }
+  function remove(n) { if (n && n.parentNode) n.parentNode.removeChild(n); }
+  function insertAfter(n, ref) { ref.parentNode.insertBefore(n, ref.nextSibling); }
+  function elementChildren(el) {
+    var out = [];
+    for (var c = el.firstChild; c; c = c.nextSibling) if (c.nodeType === 1) out.push(c);
+    return out;
+  }
+  // A child that is properties, not content.
+  function isProps(n) { return isW(n, "rPr") || isW(n, "pPr") || isW(n, "sdtPr") || isW(n, "sdtEndPr"); }
+  function hasContentBefore(n) {
+    for (var c = n.previousSibling; c; c = c.previousSibling) if (c.nodeType === 1 && !isProps(c)) return true;
+    return false;
+  }
+  function isOn(el) {
+    if (!el) return false;
+    var v = attr(el, "val");
+    return v == null || !/^(0|false|off|none)$/i.test(v);
+  }
+
+  /* ---------- the model ---------- */
+  function Model(xmlString, opts) {
+    opts = opts || {};
+    var Parser = opts.DOMParser || global.DOMParser;
+    this.Serializer = opts.XMLSerializer || global.XMLSerializer;
+    var m = /^\s*(<\?xml[^>]*\?>)/.exec(xmlString);
+    this.decl = m ? m[1] : '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>';
+    var doc = new Parser().parseFromString(xmlString, "application/xml");
+    var root = doc.documentElement;
+    if (!root || root.getElementsByTagName("parsererror").length || root.localName === "parsererror" || !isW(root, "document")) {
+      throw new Error("word/document.xml could not be read");
+    }
+    this.doc = doc;
+    this.P = root.prefix || "w";
+    this.body = firstW(root, "body");
+    if (!this.body) throw new Error("This document has no body");
+    this.styles = null;
+    if (opts.stylesXml) {
+      try {
+        var sd = new Parser().parseFromString(opts.stylesXml, "application/xml");
+        if (sd.documentElement && isW(sd.documentElement, "styles")) this.styles = sd;
+      } catch (e) { /* styles are only used for niceties */ }
+    }
+    var ps = doc.getElementsByTagNameNS(W, "p");
+    this.byPid = {};
+    this.nextPid = 0;
+    for (var i = 0; i < ps.length; i++) this._tag(ps[i]);
+  }
+
+  Model.prototype._tag = function (p) {
+    var pid = String(this.nextPid++);
+    p.setAttributeNS(FNS, "folio:pid", pid);
+    this.byPid[pid] = p;
+    return pid;
+  };
+  Model.prototype.pidOf = function (p) { return p.getAttributeNS(FNS, "pid") || null; };
+  Model.prototype.para = function (pid) {
+    var p = this.byPid[pid];
+    if (p && p.ownerDocument === this.doc && ancestorIsDoc(p)) return p;
+    this.reindex();
+    return this.byPid[pid] || null;
+  };
+  function ancestorIsDoc(n) {
+    while (n.parentNode) { n = n.parentNode; if (n.nodeType === 9) return true; }
+    return false;
+  }
+  // After undo swaps nodes in and out, rebuild the pid table.
+  Model.prototype.reindex = function () {
+    this.byPid = {};
+    var ps = this.doc.getElementsByTagNameNS(W, "p");
+    for (var i = 0; i < ps.length; i++) {
+      var pid = this.pidOf(ps[i]);
+      if (pid) this.byPid[pid] = ps[i];
+    }
+  };
+
+  Model.prototype.el = function (name, val) {
+    var e = this.doc.createElementNS(W, this.P + ":" + name);
+    if (val != null) e.setAttributeNS(W, this.P + ":val", String(val));
+    return e;
+  };
+  Model.prototype.setText = function (t, s) {
+    while (t.firstChild) t.removeChild(t.firstChild);
+    if (s) t.appendChild(this.doc.createTextNode(s));
+    t.setAttributeNS(XML_NS, "xml:space", "preserve");
+  };
+
+  /* Why a paragraph can't be edited, or null if it can. */
+  Model.prototype.lockReason = function (pid) {
+    var p = this.para(pid);
+    if (!p) return "missing";
+    if (ancestor(p, W, "txbxContent") || hasDesc(p, W, "txbxContent")) return "textbox";
+    var pPr = firstW(p, "pPr"), rPr = pPr && firstW(pPr, "rPr");
+    if (rPr && (firstW(rPr, "del") || firstW(rPr, "moveFrom"))) return "tracked";
+    return null;
+  };
+  Model.prototype.hasSection = function (pid) {
+    var p = this.para(pid), pPr = p && firstW(p, "pPr");
+    return !!(pPr && firstW(pPr, "sectPr"));
+  };
+  // Where a page break sits, so edit mode can show it: "before", "after" or null.
+  Model.prototype.pageBreak = function (pid) {
+    var p = this.para(pid);
+    if (!p) return null;
+    var pPr = firstW(p, "pPr");
+    if (pPr && isOn(firstW(pPr, "pageBreakBefore"))) return "before";
+    var brs = p.getElementsByTagNameNS(W, "br"), page = null;
+    for (var i = 0; i < brs.length; i++) if (attr(brs[i], "type") === "page") { page = brs[i]; break; }
+    if (!page) return null;
+    var slots = this.textModel(pid).slots, seenText = false, found = false;
+    (function walk(n) {
+      for (var c = n.firstChild; c && !found; c = c.nextSibling) {
+        if (c === page) { found = true; return; }
+        for (var k = 0; k < slots.length; k++) if (slots[k].node === c) { seenText = true; break; }
+        if (c.nodeType === 1) walk(c);
+      }
+    })(p);
+    return seenText ? "after" : "before";
+  };
+
+  /*
+   * The paragraph's visible characters, in the order mammoth draws them.
+   * Each slot points at the XML node that holds it. Anything mammoth doesn't
+   * draw (field codes, deleted text, page breaks, bookmarks) has no slot, so
+   * edits can never touch it.
+   */
+  Model.prototype.textModel = function (pid) {
+    var p = this.para(pid), slots = [];
+    if (!p) return { text: "", slots: slots };
+    function push(c, k, node, run, off) { slots.push({ c: c, k: k, node: node, run: run, off: off || 0 }); }
+    function hasImage(el) { return hasDesc(el, A, "blip") || hasDesc(el, V, "imagedata"); }
+    function walkRun(r) {
+      for (var c = r.firstChild; c; c = c.nextSibling) {
+        if (c.nodeType !== 1) continue;
+        if (c.namespaceURI === MC && c.localName === "AlternateContent") {
+          var fb = firstNS(c, MC, "Fallback");
+          if (fb && hasImage(fb)) push(OBJ, "img", c, r);
+          continue;
+        }
+        if (c.namespaceURI !== W) continue;
+        switch (c.localName) {
+          case "t":
+            var s = textOf(c);
+            for (var i = 0; i < s.length; i++) push(s.charAt(i), "t", c, r, i);
+            break;
+          case "tab": push("\t", "tab", c, r); break;
+          case "br":
+            var ty = attr(c, "type");
+            if (!ty || ty === "textWrapping") push("\n", "br", c, r);
+            break;
+          case "noBreakHyphen": push("‑", "nbh", c, r); break;
+          case "softHyphen": push("­", "sh", c, r); break;
+          case "sym": push(WILD, "sym", c, r); break;
+          case "drawing": case "pict": case "object":
+            if (hasImage(c)) push(OBJ, "img", c, r);
+            break;
+          case "footnoteReference": case "endnoteReference": push(OBJ, "note", c, r); break;
+        }
+      }
+    }
+    function walk(el) {
+      for (var c = el.firstChild; c; c = c.nextSibling) {
+        if (c.nodeType !== 1) continue;
+        if (c.namespaceURI === MC && c.localName === "AlternateContent") {
+          var fb = firstNS(c, MC, "Fallback");
+          if (fb) walk(fb);
+          continue;
+        }
+        if (c.namespaceURI !== W) continue;
+        switch (c.localName) {
+          case "r": walkRun(c); break;
+          case "hyperlink": case "ins": case "smartTag": walk(c); break;
+          case "sdt": var sc = firstW(c, "sdtContent"); if (sc) walk(sc); break;
+        }
+      }
+    }
+    walk(p);
+    var text = "";
+    for (var i = 0; i < slots.length; i++) text += slots[i].c;
+    return { text: text, slots: slots };
+  };
+
+  /* ---------- deleting ---------- */
+  Model.prototype.deleteSlots = function (pid, idxs) {
+    var tm = this.textModel(pid), byNode = [], atoms = [], runs = [], self = this;
+    idxs.forEach(function (i) {
+      var s = tm.slots[i];
+      if (!s) return;
+      runs.push(s.run);
+      if (s.k === "t") {
+        var entry = null;
+        for (var j = 0; j < byNode.length; j++) if (byNode[j].node === s.node) { entry = byNode[j]; break; }
+        if (!entry) { entry = { node: s.node, offs: {} }; byNode.push(entry); }
+        entry.offs[s.off] = true;
+      } else atoms.push(s.node);
+    });
+    byNode.forEach(function (e) {
+      var str = textOf(e.node), out = "";
+      for (var i = 0; i < str.length; i++) if (!e.offs[i]) out += str.charAt(i);
+      self.setText(e.node, out);
+    });
+    atoms.forEach(remove);
+    this._tidy(runs);
+  };
+
+  // Remove what a deletion emptied: blank w:t, runs with nothing left, empty links.
+  Model.prototype._tidy = function (runs) {
+    var seen = [];
+    runs.forEach(function (r) {
+      if (seen.indexOf(r) !== -1) return;
+      seen.push(r);
+      if (!r.parentNode) return;
+      elementChildren(r).forEach(function (c) { if (isW(c, "t") && !textOf(c)) remove(c); });
+      var content = elementChildren(r).filter(function (c) { return !isW(c, "rPr"); });
+      if (content.length) return;
+      var parent = r.parentNode;
+      remove(r);
+      while (parent && (isW(parent, "hyperlink") || isW(parent, "smartTag") || isW(parent, "ins")) && !elementChildren(parent).length) {
+        var up = parent.parentNode;
+        remove(parent);
+        parent = up;
+      }
+    });
+  };
+
+  /* ---------- inserting ---------- */
+  // Turn a string into w:t / w:tab / w:br nodes.
+  Model.prototype._content = function (str) {
+    var out = [], self = this;
+    str.split(/([\t\n])/).forEach(function (part) {
+      if (part === "\t") out.push(self.el("tab"));
+      else if (part === "\n") out.push(self.el("br"));
+      else if (part) { var t = self.el("t"); self.setText(t, part); out.push(t); }
+    });
+    return out;
+  };
+  function cleanRPr(rPr) {
+    var c = rPr.cloneNode(true);
+    elementChildren(c).forEach(function (k) {
+      if (isW(k, "ins") || isW(k, "del") || isW(k, "moveFrom") || isW(k, "moveTo") || isW(k, "rPrChange")) remove(k);
+    });
+    return c;
+  }
+  Model.prototype._markRPr = function (p) {
+    var pPr = firstW(p, "pPr"), rPr = pPr && firstW(pPr, "rPr");
+    if (!rPr) return null;
+    var c = cleanRPr(rPr);
+    // a paragraph mark's rPr is CT_ParaRPr: rename-free, but make it a plain w:rPr
+    var r = this.el("rPr");
+    while (c.firstChild) r.appendChild(c.firstChild);
+    return r;
+  };
+  // Formatting for new text that can't join an existing run: borrow the nearest text run's.
+  Model.prototype._donor = function (p, tm, from, dir) {
+    var order = dir < 0 ? [-1, 1] : [1, -1];
+    for (var o = 0; o < 2; o++) {
+      var step = order[o];
+      for (var i = from + step; i >= 0 && i < tm.slots.length; i += step) {
+        var s = tm.slots[i];
+        if (s.k === "t" || s.k === "tab" || s.k === "br") {
+          var rPr = firstW(s.run, "rPr");
+          return rPr ? cleanRPr(rPr) : null;
+        }
+      }
+    }
+    return this._markRPr(p);
+  };
+  Model.prototype._newRun = function (rPr, nodes) {
+    var r = this.el("r");
+    if (rPr) r.appendChild(rPr);
+    nodes.forEach(function (n) { r.appendChild(n); });
+    return r;
+  };
+  Model.prototype._splitRun = function (run, node) {
+    var r2 = run.cloneNode(false), rPr = firstW(run, "rPr");
+    if (rPr) r2.appendChild(rPr.cloneNode(true));
+    while (node) { var nx = node.nextSibling; r2.appendChild(node); node = nx; }
+    insertAfter(r2, run);
+    return r2;
+  };
+  Model.prototype._splitT = function (t, off) {
+    var s = textOf(t), t2 = this.el("t");
+    this.setText(t2, s.slice(off));
+    this.setText(t, s.slice(0, off));
+    insertAfter(t2, t);
+    return t2;
+  };
+
+  /*
+   * Insert text at a position given relative to a visible character:
+   *   { after: i } | { before: i } | { end: true }
+   * New text joins the run of the character beside it, so it inherits that
+   * run's fonts, colours and size, just like typing in Word.
+   */
+  Model.prototype.insertText = function (pid, pos, str) {
+    str = String(str).replace(/\r\n?/g, "\n").replace(/[￼\u0000-\u0008\u000B\u000C\u000E-\u001F]/g, "");
+    if (!str) return;
+    var p = this.para(pid), tm = this.textModel(pid);
+    var idx = pos.after != null ? pos.after : pos.before;
+    var s = (pos.end || idx == null) ? null : tm.slots[idx];
+    if (!s) {
+      p.appendChild(this._newRun(this._donor(p, tm, tm.slots.length, -1), this._content(str)));
+      return;
+    }
+    var after = pos.after != null, nodes;
+    if (s.k === "t") {
+      var off = after ? s.off + 1 : s.off, cur = textOf(s.node);
+      if (!/[\t\n]/.test(str)) { this.setText(s.node, cur.slice(0, off) + str + cur.slice(off)); return; }
+      var right = off < cur.length ? this._splitT(s.node, off) : null;
+      nodes = this._content(str);
+      var ref = s.node;
+      nodes.forEach(function (n) { insertAfter(n, ref); ref = n; });
+      if (right && !textOf(right)) remove(right);
+      if (!textOf(s.node)) remove(s.node);
+      return;
+    }
+    nodes = this._content(str);
+    if (s.k !== "img" && s.k !== "note") {
+      // tabs, breaks, hyphens and symbols live in ordinary text runs
+      var anchor = s.node;
+      if (after) nodes.forEach(function (n) { insertAfter(n, anchor); anchor = n; });
+      else nodes.forEach(function (n) { anchor.parentNode.insertBefore(n, anchor); });
+      return;
+    }
+    // Next to a picture or a footnote mark: a run of its own, styled like the nearby text.
+    var run = s.run, rPr = this._donor(p, tm, idx, after ? -1 : 1), nr = this._newRun(rPr, nodes);
+    if (after) {
+      var nxt = s.node.nextSibling;
+      while (nxt && nxt.nodeType !== 1) nxt = nxt.nextSibling;
+      if (nxt) this._splitRun(run, nxt);
+      insertAfter(nr, run);
+    } else {
+      if (hasContentBefore(s.node)) run = this._splitRun(run, s.node);
+      run.parentNode.insertBefore(nr, run);
+    }
+  };
+
+  /* ---------- formatting ---------- */
+  // Split runs so that slot i starts a run.
+  Model.prototype._splitBefore = function (pid, i) {
+    var tm = this.textModel(pid), s = tm.slots[i];
+    if (!s) return;
+    var node = s.node;
+    if (s.k === "t" && s.off > 0) node = this._splitT(s.node, s.off);
+    if (hasContentBefore(node)) this._splitRun(s.run, node);
+  };
+  Model.prototype._setProp = function (run, prop, on) {
+    var rPr = firstW(run, "rPr");
+    if (!rPr) { rPr = this.el("rPr"); run.insertBefore(rPr, run.firstChild); }
+    var names = FORMAT_TAGS[prop];
+    elementChildren(rPr).forEach(function (c) { if (c.namespaceURI === W && names.indexOf(c.localName) !== -1) remove(c); });
+    var self = this;
+    names.forEach(function (n) {
+      var e = prop === "u" ? self.el("u", on ? "single" : "none") : self.el(n, on ? null : "0");
+      var at = RPR_INDEX[n], before = null;
+      for (var c = rPr.firstChild; c; c = c.nextSibling) {
+        if (c.nodeType !== 1) continue;
+        var ci = c.namespaceURI === W && RPR_INDEX[c.localName] != null ? RPR_INDEX[c.localName] : 999;
+        if (ci > at) { before = c; break; }
+      }
+      rPr.insertBefore(e, before);
+    });
+  };
+  // Make slots [i, j) bold / italic / underlined / struck through (or not).
+  Model.prototype.setFormat = function (pid, i, j, prop, on) {
+    if (!FORMAT_TAGS[prop] || j <= i) return;
+    this._splitBefore(pid, i);
+    this._splitBefore(pid, j);
+    var tm = this.textModel(pid), runs = [];
+    for (var k = i; k < j && k < tm.slots.length; k++) if (runs.indexOf(tm.slots[k].run) === -1) runs.push(tm.slots[k].run);
+    var self = this;
+    runs.forEach(function (r) { self._setProp(r, prop, on); });
+  };
+
+  /* ---------- paragraphs ---------- */
+  Model.prototype._shell = function (p) {
+    var np = p.cloneNode(false);
+    if (np.hasAttributeNS(W14, "paraId")) np.removeAttributeNS(W14, "paraId");
+    if (np.hasAttributeNS(W14, "textId")) np.removeAttributeNS(W14, "textId");
+    np.removeAttributeNS(FNS, "pid");
+    var pPr = firstW(p, "pPr");
+    if (pPr) {
+      var c = pPr.cloneNode(true);
+      elementChildren(c).forEach(function (k) { if (isW(k, "pPrChange") || isW(k, "sectPr")) remove(k); });
+      var rPr = firstW(c, "rPr");
+      if (rPr) elementChildren(rPr).forEach(function (k) {
+        if (isW(k, "ins") || isW(k, "del") || isW(k, "moveFrom") || isW(k, "moveTo") || isW(k, "rPrChange")) remove(k);
+      });
+      np.appendChild(c);
+    }
+    return np;
+  };
+  // A section break lives in the paragraph that ends the section, so it follows the last piece.
+  Model.prototype._moveSection = function (from, to) {
+    var pPr = firstW(from, "pPr"), sp = pPr && firstW(pPr, "sectPr");
+    if (!sp) return;
+    var tp = firstW(to, "pPr");
+    if (!tp) { tp = this.el("pPr"); to.insertBefore(tp, to.firstChild); }
+    var change = firstW(tp, "pPrChange");
+    tp.insertBefore(sp, change);
+  };
+  Model.prototype._cloneShellOf = function (n) {
+    var c = n.cloneNode(false);
+    if (isW(n, "r")) { var rPr = firstW(n, "rPr"); if (rPr) c.appendChild(rPr.cloneNode(true)); }
+    if (isW(n, "sdt")) {
+      var sp = firstW(n, "sdtPr");
+      if (sp) { var spc = sp.cloneNode(true), id = firstW(spc, "id"); if (id) remove(id); c.appendChild(spc); }
+    }
+    return c;
+  };
+
+  /*
+   * Split a paragraph in two (the Enter key). pos is "start", "end",
+   * { after: i } or { before: i }. Returns the new paragraph's pid, which is
+   * the first half for "start" and the second half otherwise.
+   */
+  Model.prototype.split = function (pid, pos, opts) {
+    opts = opts || {};
+    var p = this.para(pid), np = this._shell(p);
+    if (pos === "start") {
+      p.parentNode.insertBefore(np, p);
+      return this._tag(np);
+    }
+    this._moveSection(p, np);
+    if (pos === "end" && opts.nextStyle) this._setStyle(np, opts.nextStyle);
+    insertAfter(np, p);
+    if (pos !== "end") {
+      var tm = this.textModel(pid), after = pos.after != null, s = tm.slots[after ? pos.after : pos.before];
+      if (s) {
+        var P = s.run, X;
+        if (after) X = (s.k === "t" && s.off < textOf(s.node).length - 1) ? this._splitT(s.node, s.off + 1) : s.node.nextSibling;
+        else X = (s.k === "t" && s.off > 0) ? this._splitT(s.node, s.off) : s.node;
+        while (P !== p) {
+          if (!X) { X = P.nextSibling; P = P.parentNode; continue; }
+          if (!hasContentBefore(X)) { X = P; P = P.parentNode; continue; }
+          var P2 = this._cloneShellOf(P);
+          while (X) { var nx = X.nextSibling; P2.appendChild(X); X = nx; }
+          insertAfter(P2, P);
+          X = P2; P = P.parentNode;
+        }
+        while (X) { var n2 = X.nextSibling; np.appendChild(X); X = n2; }
+        this._tidy(elementChildren(p).concat(elementChildren(np)).filter(function (n) { return isW(n, "r"); }));
+      }
+    }
+    return this._tag(np);
+  };
+
+  // Paragraphs can join only when nothing but bookmarks and the like sits between them.
+  Model.prototype.canMerge = function (pidA, pidB) {
+    var a = this.para(pidA), b = this.para(pidB);
+    if (!a || !b || a === b) return "missing";
+    if (a.parentNode !== b.parentNode) return "structure";
+    for (var n = a.nextSibling; n !== b; n = n.nextSibling) {
+      if (!n) return "structure";
+      if (n.nodeType === 1 && !(n.namespaceURI === W && MARKERS[n.localName])) return "structure";
+    }
+    if (this.hasSection(pidA) || this.hasSection(pidB)) return "section";
+    return null;
+  };
+  // Join paragraph B onto the end of A (Backspace at the start of B).
+  Model.prototype.merge = function (pidA, pidB) {
+    var why = this.canMerge(pidA, pidB);
+    if (why) return why;
+    var a = this.para(pidA), b = this.para(pidB);
+    elementChildren(b).forEach(function (c) { if (!isW(c, "pPr")) a.appendChild(c); });
+    remove(b);
+    delete this.byPid[pidB];
+    return null;
+  };
+  Model.prototype.removePara = function (pid) {
+    if (this.hasSection(pid)) return "section";
+    var p = this.para(pid);
+    if (!p) return "missing";
+    remove(p);
+    delete this.byPid[pid];
+    return null;
+  };
+
+  /* ---------- styles ---------- */
+  Model.prototype._style = function (id) {
+    if (!this.styles || !id) return null;
+    var all = this.styles.getElementsByTagNameNS(W, "style");
+    for (var i = 0; i < all.length; i++) if (attr(all[i], "styleId") === id) return all[i];
+    return null;
+  };
+  Model.prototype._defaultParaStyle = function () {
+    if (!this.styles) return null;
+    var all = this.styles.getElementsByTagNameNS(W, "style");
+    for (var i = 0; i < all.length; i++) {
+      var def = attr(all[i], "default");
+      if (attr(all[i], "type") === "paragraph" && def != null && /^(1|true|on)$/i.test(def)) return attr(all[i], "styleId");
+    }
+    return null;
+  };
+  Model.prototype.styleOf = function (pid) {
+    var p = this.para(pid), pPr = p && firstW(p, "pPr"), ps = pPr && firstW(pPr, "pStyle");
+    return ps ? attr(ps, "val") : this._defaultParaStyle();
+  };
+  // Word's "style for following paragraph": Enter at the end of a heading gives body text.
+  Model.prototype.nextStyleFor = function (pid) {
+    var id = this.styleOf(pid), st = this._style(id), nx = st && firstW(st, "next");
+    var next = nx && attr(nx, "val");
+    return next && next !== id ? next : null;
+  };
+  Model.prototype._setStyle = function (p, id) {
+    var pPr = firstW(p, "pPr");
+    if (!pPr) { pPr = this.el("pPr"); p.insertBefore(pPr, p.firstChild); }
+    var ps = firstW(pPr, "pStyle");
+    if (id === this._defaultParaStyle()) { if (ps) remove(ps); return; }
+    if (!ps) { ps = this.el("pStyle"); pPr.insertBefore(ps, pPr.firstChild); }
+    ps.setAttributeNS(W, this.P + ":val", id);
+  };
+  Model.prototype._styleNumbered = function (id) {
+    for (var guard = 0; id && guard < 12; guard++) {
+      var st = this._style(id);
+      if (!st) return false;
+      var pPr = firstW(st, "pPr");
+      if (pPr && firstW(pPr, "numPr")) return true;
+      var b = firstW(st, "basedOn");
+      id = b && attr(b, "val");
+    }
+    return false;
+  };
+  // Enter on an empty list item: leave the list, like Word does.
+  Model.prototype.leaveList = function (pid) {
+    var p = this.para(pid), pPr = p && firstW(p, "pPr");
+    if (!pPr) return;
+    var np = firstW(pPr, "numPr");
+    if (np) remove(np);
+    var ps = firstW(pPr, "pStyle"), id = ps && attr(ps, "val");
+    if (id && (this._styleNumbered(id) || /^list/i.test(id))) remove(ps);
+    if (this._styleNumbered(this.styleOf(pid))) {
+      var n = this.el("numPr"), numId = this.el("numId", 0);
+      n.appendChild(numId);
+      var after = firstW(pPr, "pStyle") || firstW(pPr, "keepNext") || null;
+      pPr.insertBefore(n, after ? after.nextSibling : pPr.firstChild);
+    }
+  };
+
+  /* ---------- output ---------- */
+  Model.prototype._cleanClone = function () {
+    var c = this.doc.cloneNode(true);
+    var ps = c.getElementsByTagNameNS(W, "p");
+    for (var i = 0; i < ps.length; i++) if (ps[i].hasAttributeNS(FNS, "pid")) ps[i].removeAttributeNS(FNS, "pid");
+    return c;
+  };
+  Model.prototype.serialize = function () {
+    var s = new this.Serializer().serializeToString(this._cleanClone());
+    if (!/^\s*<\?xml/.test(s)) s = this.decl + (/^\r?\n/.test(s) ? "" : "\r\n") + s;
+    return s;
+  };
+  // The copy mammoth renders: each paragraph starts with a bookmark named after its pid,
+  // which mammoth turns into <a id="_folio_N">, so every block can be matched to its paragraph.
+  Model.prototype.forRendering = function () {
+    var c = this.doc.cloneNode(true), ps = c.getElementsByTagNameNS(W, "p"), list = [];
+    for (var i = 0; i < ps.length; i++) list.push(ps[i]);
+    var P = this.P;
+    list.forEach(function (p) {
+      var pid = p.getAttributeNS(FNS, "pid");
+      p.removeAttributeNS(FNS, "pid");
+      if (!pid) return;
+      var b = c.createElementNS(W, P + ":bookmarkStart");
+      b.setAttributeNS(W, P + ":id", String(2000000000 + +pid));
+      b.setAttributeNS(W, P + ":name", "_folio_" + pid);
+      var pPr = firstW(p, "pPr");
+      p.insertBefore(b, pPr ? pPr.nextSibling : p.firstChild);
+    });
+    var s = new this.Serializer().serializeToString(c);
+    if (!/^\s*<\?xml/.test(s)) s = this.decl + s;
+    return s;
+  };
+  // Counts used to check a saved file kept everything it should.
+  Model.prototype.census = function (doc) {
+    doc = doc || this.doc;
+    var out = {};
+    [["p", W], ["tbl", W], ["sectPr", W], ["drawing", W], ["pict", W], ["footnoteReference", W], ["endnoteReference", W],
+      ["bookmarkStart", W], ["hyperlink", W], ["txbxContent", W], ["fldChar", W], ["instrText", W], ["del", W], ["ins", W],
+      ["AlternateContent", MC], ["headerReference", W], ["footerReference", W]].forEach(function (k) {
+      out[k[0]] = doc.getElementsByTagNameNS(k[1], k[0]).length;
+    });
+    return out;
+  };
+  // Region helpers for undo: a run of siblings under one parent that covers some paragraphs.
+  Model.prototype.region = function (pids) {
+    var self = this, nodes = pids.map(function (id) { return self.para(id); }).filter(Boolean);
+    if (!nodes.length) return null;
+    var chains = nodes.map(function (n) { var c = []; for (var x = n; x; x = x.parentNode) c.unshift(x); return c; });
+    var depth = 0;
+    while (chains.every(function (c) { return c[depth + 1] && c[depth + 1] === chains[0][depth + 1]; })) depth++;
+    var parent = chains[0][depth];
+    // the LCA must contain the nodes, not be one of them
+    if (nodes.indexOf(parent) !== -1) { parent = parent.parentNode; depth--; }
+    var kids = Array.prototype.slice.call(parent.childNodes), lo = Infinity, hi = -1;
+    chains.forEach(function (c) { var i = kids.indexOf(c[depth + 1]); lo = Math.min(lo, i); hi = Math.max(hi, i); });
+    return { parent: parent, start: lo, len: hi - lo + 1, count: kids.length };
+  };
+
+  var api = { Model: Model, W: W, OBJ: OBJ, WILD: WILD, FNS: FNS };
+  global.FolioModel = api;
+  if (typeof module !== "undefined" && module.exports) module.exports = api;
+})(typeof window !== "undefined" ? window : globalThis);
+
+</script>
+<script>
+/*
+ * Folio's edit mode.
+ *
+ * The page you edit is mammoth's rendering of the document, made
+ * contenteditable. Every block carries data-pid, the id of the Word paragraph
+ * it came from (see model.js). After each keystroke the block's visible text
+ * is compared with what it was, and only the difference is applied to the
+ * paragraph's XML. Enter, Backspace across paragraphs, paste and formatting
+ * are handled here rather than by the browser, so the HTML and the XML always
+ * change together.
+ *
+ * Safety nets:
+ *  - every block is aligned character by character with its XML; a block
+ *    Folio can't line up exactly is locked, never guessed at;
+ *  - after every change the alignment is checked again, and a change that
+ *    would make the screen and the file disagree is rolled back;
+ *  - before a file is written, the saved package is re-read and compared
+ *    with the original: every other part must be byte-identical.
+ */
+(function () {
+  "use strict";
+  var FM = window.FolioModel;
+  var OBJ = FM.OBJ, WILD = FM.WILD;
+  var DOCX = "application/vnd.openxmlformats-officedocument.wordprocessingml.document";
+  var BLOCK_SEL = "p,h1,h2,h3,h4,h5,h6,li";
+  var NESTED = { UL: 1, OL: 1, TABLE: 1, P: 1, H1: 1, H2: 1, H3: 1, H4: 1, H5: 1, H6: 1, BLOCKQUOTE: 1, DIV: 1, LI: 1 };
+  var BITS = { b: 1, i: 2, u: 4, s: 8 };
+  var CMDS = { bold: "b", italic: "i", underline: "u", strikeThrough: "s" };
+
+  function EditError(code) { this.code = code; this.message = "edit check failed: " + code; }
+  EditError.prototype = Object.create(Error.prototype);
+
+  /* ---------- alignment (Myers diff) ---------- */
+  function same(a, b) {
+    if (b === WILD) return a !== OBJ && a !== "\n" && a !== "\t";
+    if (a === " ") a = " ";
+    if (b === " ") b = " ";
+    return a === b;
+  }
+  // Pair up the characters of a (screen) and b (XML). Returns null if they differ too much.
+  function align(a, b) {
+    var n = a.length, m = b.length, ma = new Int32Array(n), mb = new Int32Array(m), i;
+    ma.fill(-1); mb.fill(-1);
+    var s = 0;
+    while (s < n && s < m && same(a[s], b[s])) { ma[s] = s; mb[s] = s; s++; }
+    var e = 0;
+    while (e < n - s && e < m - s && same(a[n - 1 - e], b[m - 1 - e])) { ma[n - 1 - e] = m - 1 - e; mb[m - 1 - e] = n - 1 - e; e++; }
+    var N = n - s - e, M = m - s - e;
+    if (N && M) {
+      var MAX = Math.min(N + M, 600), off = MAX + 1, V = new Int32Array(2 * MAX + 3), trace = [], d, k, x, y, done = -1;
+      V[1 + off] = 0;
+      for (d = 0; d <= MAX && done < 0; d++) {
+        trace.push(V.slice());
+        for (k = -d; k <= d; k += 2) {
+          x = (k === -d || (k !== d && V[k - 1 + off] < V[k + 1 + off])) ? V[k + 1 + off] : V[k - 1 + off] + 1;
+          y = x - k;
+          while (x < N && y < M && same(a[s + x], b[s + y])) { x++; y++; }
+          V[k + off] = x;
+          if (x >= N && y >= M) { done = d; break; }
+        }
+      }
+      if (done < 0) return null;
+      x = N; y = M;
+      for (d = done; d > 0; d--) {
+        var Vp = trace[d];
+        k = x - y;
+        var pk = (k === -d || (k !== d && Vp[k - 1 + off] < Vp[k + 1 + off])) ? k + 1 : k - 1;
+        var px = Vp[pk + off], py = px - pk;
+        while (x > px && y > py) { x--; y--; ma[s + x] = s + y; mb[s + y] = s + x; }
+        x = px; y = py;
+      }
+      while (x > 0 && y > 0) { x--; y--; ma[s + x] = s + y; mb[s + y] = s + x; }
+    }
+    var uh = 0, ux = 0;
+    for (i = 0; i < n; i++) if (ma[i] < 0) uh++;
+    for (i = 0; i < m; i++) if (mb[i] < 0) ux++;
+    return { ma: ma, mb: mb, uh: uh, ux: ux };
+  }
+
+  /* ---------- reading a block ---------- */
+  function isNested(c) { return c.hasAttribute("data-pid") || NESTED[c.tagName] === 1; }
+  function fmtBits(el, block, cache) {
+    var hit = cache.get(el);
+    if (hit != null) return hit;
+    var cs = getComputedStyle(el), f = 0;
+    if ((parseInt(cs.fontWeight, 10) || 400) >= 600) f |= 1;
+    if (cs.fontStyle && cs.fontStyle !== "normal") f |= 2;
+    for (var e = el; e && e !== block && e.nodeType === 1; e = e.parentElement) {
+      var t = e.tagName, td = (e.style && (e.style.textDecorationLine || e.style.textDecoration)) || "";
+      if (t === "U" || t === "INS" || /underline/.test(td)) f |= 4;
+      if (t === "S" || t === "STRIKE" || t === "DEL" || /line-through/.test(td)) f |= 8;
+    }
+    cache.set(el, f);
+    return f;
+  }
+  // The block's visible characters, in the same terms as model.textModel.
+  function readBlock(block, withFmt) {
+    var text = "", fmt = [], pos = [], cache = new Map();
+    (function walk(el) {
+      for (var c = el.firstChild; c; c = c.nextSibling) {
+        if (c.nodeType === 3) {
+          var d = c.data, f = withFmt ? fmtBits(el, block, cache) : 0;
+          for (var i = 0; i < d.length; i++) { text += d.charAt(i); fmt.push(f); pos.push([c, i]); }
+        } else if (c.nodeType === 1) {
+          if (isNested(c)) continue;
+          if (c.hasAttribute("data-atom") || c.tagName === "IMG" || c.tagName === "INPUT") { text += OBJ; fmt.push(-1); pos.push([c, -1]); continue; }
+          if (c.tagName === "BR") { text += "\n"; fmt.push(-1); pos.push([c, -1]); continue; }
+          walk(c);
+        }
+      }
+    })(block);
+    var ph = null;
+    // A last <br> only holds the line open; it isn't a line break.
+    if (pos.length && pos[pos.length - 1][1] === -1 && pos[pos.length - 1][0].tagName === "BR") {
+      ph = pos.pop()[0]; fmt.pop(); text = text.slice(0, -1);
+    }
+    return { text: text, fmt: fmt, pos: pos, ph: ph };
+  }
+  function inlineEnd(block) {
+    for (var c = block.firstChild; c; c = c.nextSibling) if (c.nodeType === 1 && isNested(c)) return c;
+    return null;
+  }
+  function addPlaceholder(block) { block.insertBefore(document.createElement("br"), inlineEnd(block)); }
+  // Keep a block's last line visible: empty blocks and blocks ending in a break need a spare <br>.
+  function fixPlaceholder(block, expected) {
+    var rb = readBlock(block, false);
+    if (expected != null && rb.text !== expected && rb.text + "\n" === expected) { addPlaceholder(block); return; }
+    if (!rb.text && !rb.ph) addPlaceholder(block);
+  }
+  function tidyInlines(block) {
+    var els = block.querySelectorAll("strong,em,b,i,u,s,strike,span,a,sup,sub,code");
+    for (var i = els.length - 1; i >= 0; i--) {
+      var e = els[i];
+      if (e.hasAttribute("data-atom") || e.closest("[data-atom]") || e.id) continue;
+      if (!e.textContent && !e.querySelector("img,br,input,[data-atom]")) e.remove();
+    }
+  }
+
+  /* ---------- the editor ---------- */
+  function create(host) {
+    var docEl = host.docEl, D = host.desktop || null;
+    var S = null;            // the open document
+    var states = {};         // pid -> {h, fmt, map, xmap, uh, ux}
+    var editing = false, busy = false, composing = false;
+    var undo = [], redo = [], seq = 0, savedId = 0, open = null;
+    var dock = null, lockToastAt = 0, asideTimer = null, saving = false;
+
+    /* ----- opening ----- */
+    function load(buf, name, info) {
+      info = info || {};
+      states = {}; undo = []; redo = []; savedId = 0; open = null; seq = 0;
+      S = { buf: buf.slice(0), name: name, path: info.path || null, mtime: info.mtimeMs || null,
+        isSample: !!info.isSample, model: null, why: null, target: null };
+      notify();
+      if (!window.JSZip) { S.why = "The document engine didn't load."; return Promise.resolve(buf); }
+      return JSZip.loadAsync(S.buf.slice(0)).then(function (zip) {
+        var d = zip.file("word/document.xml"), st = zip.file("word/styles.xml");
+        if (!d) throw new Error("no word/document.xml");
+        return Promise.all([d.async("string"), st ? st.async("string") : null]);
+      }).then(function (xs) {
+        S.model = new FM.Model(xs[0], { stylesXml: xs[1] });
+        return renderBuf();
+      }).catch(function (e) {
+        console.warn("Folio: editing unavailable", e);
+        S.model = null;
+        S.why = "Folio can read this document but can't edit it safely.";
+        return buf.slice(0);
+      });
+    }
+    // The document as mammoth should render it: the live XML, with a bookmark per paragraph.
+    function renderBuf() {
+      return JSZip.loadAsync(S.buf.slice(0)).then(function (zip) {
+        zip.file("word/document.xml", S.model.forRendering(), { createFolders: false });
+        return zip.generateAsync({ type: "arraybuffer", compression: "STORE" });
+      });
+    }
+
+    /* ----- after each render ----- */
+    function attach(editMode) {
+      var dup = {};
+      docEl.querySelectorAll('a[id^="_folio_"]').forEach(function (a) {
+        var pid = a.id.slice(7), block = a.closest(BLOCK_SEL);
+        a.remove();
+        if (!block || !docEl.contains(block)) return;
+        if (block.hasAttribute("data-pid")) { dup[block.dataset.pid] = dup[pid] = true; return; }
+        block.dataset.pid = pid;
+      });
+      if (!editMode || !S || !S.model) { setEditing(false); return; }
+      states = {};
+      docEl.querySelectorAll("img, input").forEach(function (im) {
+        var crop = im.parentElement && im.parentElement.classList.contains("crop") ? im.parentElement : null;
+        (crop || im).setAttribute("data-atom", im.tagName === "IMG" ? "img" : "input");
+        // a cropped picture is a span around the image: make it one solid thing
+        if (crop) crop.contentEditable = "false";
+      });
+      docEl.querySelectorAll('a[href^="#footnote-"], a[href^="#endnote-"]').forEach(function (a) {
+        if (!/^(footnote|endnote)-ref-/.test(a.id || "")) return;
+        var top = a;
+        while (top.parentElement && top.parentElement.tagName === "SUP") top = top.parentElement;
+        top.setAttribute("data-atom", "note");
+        top.contentEditable = "false";
+      });
+      docEl.querySelectorAll("[data-pid]").forEach(function (b) {
+        var pid = b.dataset.pid, rb = readBlock(b, false);
+        // mammoth never writes a spare <br>: a trailing one is a real line break and needs one to show
+        if (rb.ph || !rb.text) addPlaceholder(b);
+        var why = dup[pid] ? "merged" : S.model.lockReason(pid);
+        if (!why) {
+          var st = measure(b);
+          if (!st || st.uh > 0) why = "mismatch"; else states[pid] = st;
+        }
+        if (why) lock(b, why);
+        var pb = S.model.pageBreak(pid);
+        if (pb) b.setAttribute("data-pb", pb);
+        if (S.model.hasSection(pid)) b.setAttribute("data-sect", "");
+      });
+      lockUnmapped(docEl);
+      setEditing(true);
+    }
+    function lock(el, why) { el.setAttribute("data-locked", why); el.contentEditable = "false"; }
+    function lockUnmapped(node) {
+      Array.prototype.slice.call(node.childNodes).forEach(function (c) {
+        if (c.nodeType === 3) {
+          if (!c.data.trim()) return;
+          var sp = document.createElement("span");
+          node.insertBefore(sp, c); sp.appendChild(c); lock(sp, "unmapped");
+        } else if (c.nodeType === 1) {
+          if (c.hasAttribute("data-pid") || c.hasAttribute("data-atom")) return;
+          if (c.querySelector("[data-pid]")) lockUnmapped(c); else lock(c, "unmapped");
+        }
+      });
+    }
+    function setEditing(on) {
+      editing = on;
+      if (on) {
+        docEl.contentEditable = "true";
+        docEl.spellcheck = false;
+        docEl.classList.add("editing");
+        buildDock();
+        dock.hidden = false;
+      } else {
+        docEl.removeAttribute("contenteditable");
+        docEl.classList.remove("editing");
+        if (dock) dock.hidden = true;
+      }
+      document.body.classList.toggle("is-editing", on);
+      var b = document.getElementById("editBtn");
+      if (b) {
+        b.setAttribute("aria-pressed", String(on));
+        var l = b.querySelector(".btn-label");
+        if (l) l.textContent = on ? "Editing" : "Edit";
+      }
+      notify();
+    }
+
+    // Line a block up with its paragraph's XML.
+    function measure(block) {
+      var pid = block.dataset.pid, rb = readBlock(block, true), tm = S.model.textModel(pid), al = align(rb.text, tm.text);
+      if (!al) return null;
+      return { h: rb.text, fmt: rb.fmt, map: al.ma, xmap: al.mb, uh: al.uh, ux: al.ux };
+    }
+    function remeasure(block, limit) {
+      var st = measure(block);
+      if (!st) throw new EditError("lost");
+      if (limit && (st.uh > limit.uh || st.ux > limit.ux)) throw new EditError("drift");
+      states[block.dataset.pid] = st;
+      return st;
+    }
+
+    /* ----- blocks and positions ----- */
+    function blockOf(node) {
+      var el = node && (node.nodeType === 1 ? node : node.parentElement);
+      var b = el && el.closest("[data-pid]");
+      return b && docEl.contains(b) ? b : null;
+    }
+    function editable(b) { return !!(b && !b.hasAttribute("data-locked") && !b.closest("[data-locked]") && states[b.dataset.pid]); }
+    function allBlocks() { return Array.prototype.slice.call(docEl.querySelectorAll("[data-pid]")); }
+    function hOffset(block, node, offset) {
+      var rb = readBlock(block, false), r = document.createRange(), n = 0;
+      r.setStart(node, offset);
+      for (var i = 0; i < rb.pos.length; i++) {
+        var p = rb.pos[i], endNode, endOff;
+        if (p[1] >= 0) { endNode = p[0]; endOff = p[1] + 1; }
+        else { endNode = p[0].parentNode; endOff = Array.prototype.indexOf.call(endNode.childNodes, p[0]) + 1; }
+        // char i is before the point if its end is at or before the point
+        if (r.comparePoint(endNode, endOff) <= 0) n = i + 1; else break;
+      }
+      return n;
+    }
+    function domAt(block, off) {
+      var rb = readBlock(block, false), p;
+      if (off < rb.pos.length) {
+        p = rb.pos[off];
+        return p[1] >= 0 ? [p[0], p[1]] : [p[0].parentNode, Array.prototype.indexOf.call(p[0].parentNode.childNodes, p[0])];
+      }
+      if (rb.pos.length) {
+        p = rb.pos[rb.pos.length - 1];
+        return p[1] >= 0 ? [p[0], p[1] + 1] : [p[0].parentNode, Array.prototype.indexOf.call(p[0].parentNode.childNodes, p[0]) + 1];
+      }
+      var at = rb.ph || inlineEnd(block);
+      return at ? [at.parentNode, Array.prototype.indexOf.call(at.parentNode.childNodes, at)] : [block, block.childNodes.length];
+    }
+    function setCaret(block, off) {
+      var p = domAt(block, off), sel = document.getSelection(), r = document.createRange();
+      r.setStart(p[0], p[1]); r.collapse(true);
+      sel.removeAllRanges(); sel.addRange(r);
+    }
+    function saveSel() {
+      var sel = document.getSelection();
+      if (!sel.rangeCount) return null;
+      var r = sel.getRangeAt(0), a = blockOf(r.startContainer), b = blockOf(r.endContainer);
+      if (!a || !b) return null;
+      return { a: a.dataset.pid, ao: hOffset(a, r.startContainer, r.startOffset), b: b.dataset.pid, bo: hOffset(b, r.endContainer, r.endOffset) };
+    }
+    function restoreSel(s) {
+      if (!s) return;
+      var a = docEl.querySelector('[data-pid="' + s.a + '"]'), b = docEl.querySelector('[data-pid="' + s.b + '"]');
+      if (!a) return;
+      try {
+        var pa = domAt(a, s.ao), pb = b ? domAt(b, s.bo) : pa, r = document.createRange();
+        r.setStart(pa[0], pa[1]); r.setEnd(pb[0], pb[1]);
+        var sel = document.getSelection(); sel.removeAllRanges(); sel.addRange(r);
+        var el = pa[0].nodeType === 1 ? pa[0] : pa[0].parentElement;
+        if (el && el.scrollIntoView) {
+          var rect = el.getBoundingClientRect();
+          if (rect.top < 80 || rect.bottom > innerHeight - 90) el.scrollIntoView({ block: "center" });
+        }
+      } catch (e) { /* best effort */ }
+    }
+    // What a selection covers: one block, or a run of blocks.
+    function classify(r) {
+      var a = blockOf(r.startContainer), b = r.collapsed ? a : blockOf(r.endContainer);
+      if (!a || !b) return null;
+      if (a !== b && !r.collapsed && hOffset(b, r.endContainer, r.endOffset) === 0) {
+        // a triple-click selects up to the start of the next paragraph; leave that one alone
+        var list = allBlocks(), j = list.indexOf(b);
+        if (j > 0 && list.indexOf(a) <= j - 1) b = list[j - 1];
+        r = r.cloneRange();
+        var end = domAt(b, readBlock(b, false).text.length);
+        r.setEnd(end[0], end[1]);
+      }
+      if (!editable(a) || !editable(b)) return { range: r, first: a, last: b, multi: a !== b, bad: true };
+      return { range: r, first: a, last: b, block: a, multi: a !== b };
+    }
+    function between(a, b) {
+      var list = allBlocks(), i = list.indexOf(a), j = list.indexOf(b);
+      return i < 0 || j < 0 || j < i ? [] : list.slice(i, j + 1);
+    }
+
+    /* ----- transactions and undo ----- */
+    function topOf(node) { while (node.parentNode !== docEl) node = node.parentNode; return node; }
+    function begin(kind, blocks) {
+      var kids = Array.prototype.slice.call(docEl.childNodes), lo = Infinity, hi = -1;
+      blocks.forEach(function (b) { var i = kids.indexOf(topOf(b)); lo = Math.min(lo, i); hi = Math.max(hi, i); });
+      var xr = S.model.region(blocks.map(function (b) { return b.dataset.pid; }));
+      var xkids = Array.prototype.slice.call(xr.parent.childNodes, xr.start, xr.start + xr.len);
+      return {
+        id: ++seq, kind: kind, changed: false, sel0: saveSel(),
+        html: { start: lo, len: hi - lo + 1, count: kids.length, before: kids.slice(lo, hi + 1).map(function (n) { return n.cloneNode(true); }) },
+        xml: { parent: xr.parent, start: xr.start, len: xr.len, count: xr.count, before: xkids.map(function (n) { return n.cloneNode(true); }) }
+      };
+    }
+    function seal(tx) {
+      tx.html.lenAfter = tx.html.len + (docEl.childNodes.length - tx.html.count);
+      tx.xml.lenAfter = tx.xml.len + (tx.xml.parent.childNodes.length - tx.xml.count);
+    }
+    function commit(tx) {
+      if (!tx.changed) return;
+      seal(tx);
+      tx.sel1 = saveSel();
+      undo.push(tx);
+      if (undo.length > 300) undo.shift();
+      redo = [];
+      notify();
+    }
+    function swapNodes(parent, start, curLen, incoming) {
+      var out = [], i;
+      for (i = 0; i < curLen; i++) out.push(parent.childNodes[start + i]);
+      var ref = parent.childNodes[start + curLen] || null;
+      out.forEach(function (n) { parent.removeChild(n); });
+      incoming.forEach(function (n) { parent.insertBefore(n, ref); });
+      return out;
+    }
+    // Put a transaction's region back the way it was (toBefore) or forward again.
+    function swap(tx, toBefore) {
+      busy = true;
+      try {
+        var h = tx.html, x = tx.xml;
+        var hin = toBefore ? h.before : h.after, xin = toBefore ? x.before : x.after;
+        var hout = swapNodes(docEl, h.start, toBefore ? h.lenAfter : h.len, hin);
+        var xout = swapNodes(x.parent, x.start, toBefore ? x.lenAfter : x.len, xin);
+        if (toBefore) { h.after = hout; x.after = xout; } else { h.before = hout; x.before = xout; }
+        S.model.reindex();
+        hin.forEach(function (n) {
+          if (n.nodeType !== 1) return;
+          var bs = n.hasAttribute("data-pid") ? [n] : [];
+          bs.concat(Array.prototype.slice.call(n.querySelectorAll("[data-pid]"))).forEach(function (b) {
+            if (b.hasAttribute("data-locked")) return;
+            var st = measure(b);
+            if (st) states[b.dataset.pid] = st; else lock(b, "mismatch");
+          });
+        });
+      } finally { busy = false; }
+    }
+    function rollback(tx) { seal(tx); swap(tx, true); }
+    function guard(tx, fn) {
+      try { fn(); return true; } catch (e) {
+        console.error("Folio edit rolled back:", e && e.code, e && e.stack);
+        try { rollback(tx); } catch (e2) { console.error(e2); }
+        if (open && open.tx === tx) open = null;
+        host.toast(e && e.code === "section" ? "There's a section break there. Folio leaves those alone so your page layout stays put."
+          : "Folio couldn't make that change safely, so it put things back the way they were.");
+        notify();
+        return false;
+      }
+    }
+    function typing(block, kind) {
+      var now = Date.now();
+      if (open && open.block === block && open.kind === kind && now - open.last < 1500 && block.isConnected) { open.last = now; return; }
+      closeTyping();
+      open = { tx: begin(kind, [block]), block: block, kind: kind, last: now };
+    }
+    function closeTyping() { if (!open) return; var o = open; open = null; commit(o.tx); }
+    function op(kind, blocks, fn) {
+      closeTyping();
+      var tx = begin(kind, blocks);
+      busy = true;
+      var ok;
+      try { ok = guard(tx, function () { fn(tx); }); } finally { busy = false; }
+      if (ok) { tx.changed = true; commit(tx); }
+      aside();
+      return ok;
+    }
+    function undoOp() {
+      closeTyping();
+      var tx = undo.pop();
+      if (!tx) return;
+      swap(tx, true); redo.push(tx); restoreSel(tx.sel0); notify(); aside();
+    }
+    function redoOp() {
+      closeTyping();
+      var tx = redo.pop();
+      if (!tx) return;
+      swap(tx, false); undo.push(tx); restoreSel(tx.sel1); notify(); aside();
+    }
+
+    /* ----- applying a block's changes to the XML ----- */
+    function sync(block) {
+      var pid = block.dataset.pid, st = states[pid];
+      if (!st) throw new EditError("unknown");
+      if (!composing) fixPlaceholder(block);
+      var cur = readBlock(block, true), h0 = st.h, h1 = cur.text, n0 = h0.length, n1 = h1.length, i;
+      var fmtSame = cur.fmt.length === st.fmt.length && cur.fmt.every(function (f, j) { return f === st.fmt[j]; });
+      if (h1 === h0 && fmtSame) return false;
+      var p = 0, s = 0;
+      while (p < n0 && p < n1 && h0.charAt(p) === h1.charAt(p)) p++;
+      while (s < n0 - p && s < n1 - p && h0.charAt(n0 - 1 - s) === h1.charAt(n1 - 1 - s)) s++;
+      var ins = h1.slice(p, n1 - s).replace(/ /g, " "), pos = null, anchorH = -1;
+      if (n0 - s > p || ins) {
+        var idxs = [], first = -1, last = -1;
+        for (i = p; i < n0 - s; i++) if (st.map[i] >= 0) { idxs.push(st.map[i]); if (first < 0) first = st.map[i]; last = st.map[i]; }
+        // characters the screen never showed but that sit inside the deleted stretch go too
+        for (i = first + 1; first >= 0 && i < last; i++) if (st.xmap[i] < 0 && idxs.indexOf(i) < 0) idxs.push(i);
+        idxs.sort(function (a, b) { return a - b; });
+        for (i = p - 1; i >= 0 && !pos; i--) if (st.map[i] >= 0) { pos = { after: st.map[i] }; anchorH = i; }
+        for (i = n0 - s; i < n0 && !pos; i++) if (st.map[i] >= 0) { pos = { before: st.map[i] }; anchorH = i; }
+        if (!pos) pos = { end: true };
+        if (idxs.length) S.model.deleteSlots(pid, idxs);
+        if (ins) {
+          if (pos.before != null) pos = { before: pos.before - idxs.filter(function (x) { return x < pos.before; }).length };
+          S.model.insertText(pid, pos, ins);
+        }
+      }
+      var tm = S.model.textModel(pid), al = align(h1, tm.text);
+      if (!al) throw new EditError("lost");
+      // Formatting: compare each character with how it looked before (or, for new text,
+      // with the character it was typed next to) and write only what changed.
+      var base = anchorFmt(st, anchorH, block), changes = { b: [], i: [], u: [], s: [] };
+      for (i = 0; i < n1; i++) {
+        var f1 = cur.fmt[i];
+        if (f1 < 0) continue;
+        var f0 = i < p ? st.fmt[i] : (i >= n1 - s ? st.fmt[i - n1 + n0] : base);
+        if (f0 == null || f0 < 0 || f0 === f1) continue;
+        var slot = al.ma[i];
+        if (slot < 0) continue;
+        for (var k in BITS) if ((f0 ^ f1) & BITS[k]) changes[k].push([slot, !!(f1 & BITS[k])]);
+      }
+      for (var prop in changes) {
+        var list = changes[prop].sort(function (a, b) { return a[0] - b[0]; }), j = 0;
+        while (j < list.length) {
+          var a = list[j][0], on = list[j][1], b = a;
+          while (j + 1 < list.length && list[j + 1][0] === b + 1 && list[j + 1][1] === on) { j++; b++; }
+          S.model.setFormat(pid, a, b + 1, prop, on);
+          j++;
+        }
+      }
+      if (al.uh > st.uh || al.ux > st.ux) throw new EditError("drift");
+      states[pid] = { h: h1, fmt: cur.fmt, map: al.ma, xmap: al.mb, uh: al.uh, ux: al.ux };
+      return true;
+    }
+    function anchorFmt(st, at, block) {
+      for (var i = at; i >= 0 && i < st.fmt.length; i--) if (st.fmt[i] >= 0) return st.fmt[i];
+      for (i = Math.max(at, 0); i < st.fmt.length; i++) if (st.fmt[i] >= 0) return st.fmt[i];
+      var probe = document.createElement("span");
+      probe.textContent = "x";
+      block.insertBefore(probe, inlineEnd(block));
+      var f = fmtBits(probe, block, new Map());
+      probe.remove();
+      return f;
+    }
+    function syncOpen() {
+      if (!open) return;
+      var tx = open.tx, block = open.block;
+      guard(tx, function () {
+        if (!block.isConnected || !block.hasAttribute("data-pid")) throw new EditError("vanished");
+        if (sync(block)) tx.changed = true;
+        checkRegion(tx);
+      });
+      notify();
+    }
+    // Native typing must only ever change text inside its block.
+    function checkRegion(tx) {
+      var kids = docEl.childNodes;
+      if (kids.length !== tx.html.count) throw new EditError("structure");
+      for (var i = tx.html.start; i < tx.html.start + tx.html.len; i++) {
+        var n = kids[i];
+        if (n.nodeType === 3 && n.data.trim()) throw new EditError("stray");
+      }
+    }
+
+    /* ----- structural edits ----- */
+    function deleteSelection(c) {
+      var r = c.range;
+      if (!c.multi) {
+        r.deleteContents();
+        sync(c.first);
+        var off = hOffset(c.first, r.startContainer, r.startOffset);
+        setCaret(c.first, Math.min(off, states[c.first.dataset.pid].h.length));
+        return;
+      }
+      var F = c.first, L = c.last, list = between(F, L), mid = list.slice(1, -1);
+      var keepF = hOffset(F, r.startContainer, r.startOffset);
+      var rf = document.createRange(), endF = domAt(F, states[F.dataset.pid].h.length);
+      rf.setStart(r.startContainer, r.startOffset); rf.setEnd(endF[0], endF[1]);
+      var rl = document.createRange(), startL = domAt(L, 0);
+      rl.setStart(startL[0], startL[1]); rl.setEnd(r.endContainer, r.endOffset);
+      rl.deleteContents(); rf.deleteContents();
+      if (readBlock(F, false).text.length !== keepF) throw new EditError("trim");
+      sync(F); sync(L);
+      mid.forEach(function (m) {
+        var why = S.model.removePara(m.dataset.pid);
+        if (why) throw new EditError(why);
+        var parent = m.parentNode;
+        m.remove(); delete states[m.dataset.pid]; prune(parent);
+      });
+      join(F, L);
+      setCaret(F, keepF);
+    }
+    function spanProblem(c) {
+      if (c.bad) return "locked";
+      if (!c.multi) return null;
+      var list = between(c.first, c.last);
+      for (var i = 0; i < list.length; i++) {
+        if (!editable(list[i])) return "locked";
+        for (var j = 0; j < list.length; j++) if (i !== j && list[i].contains(list[j])) return "nested";
+      }
+      for (i = 0; i + 1 < list.length; i++) {
+        var why = S.model.canMerge(list[i].dataset.pid, list[i + 1].dataset.pid);
+        if (why) return why;
+      }
+      return null;
+    }
+    function sayWhy(why) {
+      host.toast({
+        section: "There's a section break there. Folio leaves those alone so your page layout stays put.",
+        structure: "That would join text across a table or another block. Folio edits one stretch of paragraphs at a time.",
+        locked: "Part of that selection is something Folio keeps exactly as it is (like a text box or footnote).",
+        nested: "Try a smaller selection: Folio can't join nested list items in one go yet."
+      }[why] || "Folio can't make that change here.");
+    }
+    function prune(parent) {
+      while (parent && parent !== docEl && /^(UL|OL|BLOCKQUOTE)$/.test(parent.tagName) && !parent.querySelector("[data-pid]")) {
+        var up = parent.parentNode; parent.remove(); parent = up;
+      }
+    }
+    // Join block B onto the end of block A, in the XML and on screen.
+    function join(A, B) {
+      var sa = states[A.dataset.pid], sb = states[B.dataset.pid];
+      var expected = sa.h + sb.h, limit = { uh: sa.uh + sb.uh, ux: sa.ux + sb.ux };
+      var why = S.model.merge(A.dataset.pid, B.dataset.pid);
+      if (why) throw new EditError(why);
+      var ph = readBlock(A, false).ph;
+      if (ph) ph.remove();
+      var at = inlineEnd(A);
+      while (B.firstChild) A.insertBefore(B.firstChild, at);
+      var parent = B.parentNode;
+      B.remove(); delete states[B.dataset.pid]; prune(parent);
+      tidyInlines(A);
+      fixPlaceholder(A, expected);
+      var st = remeasure(A, limit);
+      if (st.h !== expected) throw new EditError("join");
+      return sa.h.length;
+    }
+    function mergeBack(block) {
+      var list = allBlocks(), prev = list[list.indexOf(block) - 1];
+      if (!prev) return;
+      if (!editable(prev)) { sayWhy("locked"); return; }
+      var why = S.model.canMerge(prev.dataset.pid, block.dataset.pid);
+      if (why) { sayWhy(why); return; }
+      op("merge", [prev, block], function () { var at = join(prev, block); setCaret(prev, at); });
+    }
+    function mergeForward(block) {
+      var list = allBlocks(), next = list[list.indexOf(block) + 1];
+      if (!next) return;
+      if (!editable(next)) { sayWhy("locked"); return; }
+      var why = S.model.canMerge(block.dataset.pid, next.dataset.pid);
+      if (why) { sayWhy(why); return; }
+      op("merge", [block, next], function () { var at = join(block, next); setCaret(block, at); });
+    }
+    function shellLike(block, asParagraph) {
+      var n = document.createElement(asParagraph ? "p" : block.tagName);
+      if (!asParagraph && block.className) n.className = block.className.replace(/\b(pseudo-head|pic)\b/g, "").trim();
+      if (!n.className) n.removeAttribute("class");
+      return n;
+    }
+    // Split the block at the caret (Enter).
+    function splitHere(block, allowLeaveList) {
+      var pid = block.dataset.pid, st = states[pid], sel = document.getSelection(), r = sel.getRangeAt(0);
+      var k = hOffset(block, r.startContainer, r.startOffset), len = st.h.length, i;
+      if (allowLeaveList && block.tagName === "LI" && !len && block.parentElement.parentElement === docEl && !inlineEnd(block)) {
+        leaveList(block); return;
+      }
+      var pos = null;
+      if (!len || k >= len) pos = "end";
+      else if (k === 0) pos = "start";
+      else {
+        for (i = k - 1; i >= 0 && !pos; i--) if (st.map[i] >= 0) pos = { after: st.map[i] };
+        for (i = k; i < len && !pos; i++) if (st.map[i] >= 0) pos = { before: st.map[i] };
+        if (!pos) pos = "end";
+      }
+      var heading = /^H[1-6]$/.test(block.tagName) || /\bdoc-(title|subtitle)\b/.test(block.className);
+      var next = pos === "end" && heading ? S.model.nextStyleFor(pid) : null;
+      var newPid = S.model.split(pid, pos, { nextStyle: next });
+      var nb = shellLike(block, !!next), rr = document.createRange(), caret = domAt(block, k);
+      nb.dataset.pid = newPid;
+      var a = st.h.slice(0, k), b = st.h.slice(k), limit = { uh: st.uh, ux: st.ux };
+      if (pos === "start") {
+        rr.setStart(block, 0); rr.setEnd(caret[0], caret[1]);
+        nb.appendChild(rr.extractContents());
+        block.parentNode.insertBefore(nb, block);
+        fixPlaceholder(nb, ""); fixPlaceholder(block, st.h);
+        var s1 = remeasure(nb), s2 = remeasure(block);
+        if (s1.h || s2.h !== st.h || s1.ux + s2.ux > limit.ux || s1.uh + s2.uh > limit.uh) throw new EditError("split");
+        setCaret(block, 0);
+        return;
+      }
+      rr.setStart(caret[0], caret[1]); rr.setEnd(block, block.childNodes.length);
+      nb.appendChild(rr.extractContents());
+      block.parentNode.insertBefore(nb, block.nextSibling);
+      tidyInlines(block); tidyInlines(nb);
+      fixPlaceholder(block, a); fixPlaceholder(nb, b);
+      var t1 = remeasure(block), t2 = remeasure(nb);
+      if (t1.h !== a || t2.h !== b || t1.ux + t2.ux > limit.ux || t1.uh + t2.uh > limit.uh) throw new EditError("split");
+      setCaret(nb, 0);
+    }
+    function leaveList(li) {
+      var pid = li.dataset.pid, U = li.parentElement, before = 0, after = [];
+      for (var n = U.firstElementChild; n && n !== li; n = n.nextElementSibling) if (n.tagName === "LI") before++;
+      for (n = li.nextSibling; n; n = n.nextSibling) after.push(n);
+      S.model.leaveList(pid);
+      var p = document.createElement("p");
+      p.dataset.pid = pid;
+      while (li.firstChild) p.appendChild(li.firstChild);
+      U.parentNode.insertBefore(p, U.nextSibling);
+      if (after.length) {
+        var U2 = U.cloneNode(false);
+        after.forEach(function (x) { U2.appendChild(x); });
+        if (U.tagName === "OL") U2.start = (U.start || 1) + before;
+        p.parentNode.insertBefore(U2, p.nextSibling);
+      }
+      li.remove();
+      if (!U.querySelector("li")) U.remove();
+      fixPlaceholder(p, "");
+      remeasure(p);
+      setCaret(p, 0);
+    }
+    function caretBlock() {
+      var sel = document.getSelection();
+      return sel.rangeCount ? blockOf(sel.getRangeAt(0).startContainer) : null;
+    }
+    // Insert plain text at the caret; newlines become new paragraphs.
+    function insertPlain(text) {
+      text = text.replace(/\r\n?/g, "\n").replace(/[\u0000-\u0008\u000B\u000C\u000E-\u001F￼]/g, "");
+      var lines = text.split("\n");
+      lines.forEach(function (line, li) {
+        var block = caretBlock();
+        if (!block) throw new EditError("caret");
+        if (li > 0) { splitHere(block, false); block = caretBlock(); }
+        if (!line) return;
+        var sel = document.getSelection(), r = sel.getRangeAt(0), node = r.startContainer, off = r.startOffset;
+        if (node.nodeType === 3) {
+          node.insertData(off, line);
+          r = document.createRange(); r.setStart(node, off + line.length);
+        } else {
+          var tn = document.createTextNode(line);
+          r.insertNode(tn);
+          r = document.createRange(); r.setStart(tn, line.length);
+        }
+        r.collapse(true); sel.removeAllRanges(); sel.addRange(r);
+        sync(block);
+      });
+    }
+    function selectionCtx() {
+      var sel = document.getSelection();
+      if (!sel.rangeCount) return null;
+      return classify(sel.getRangeAt(0));
+    }
+    function replaceSelection(c, text, kind) {
+      var why = spanProblem(c);
+      if (why) { sayWhy(why); return false; }
+      return op(kind || "replace", between(c.first, c.last), function () {
+        if (!c.range.collapsed) deleteSelection(c);
+        if (text) insertPlain(text);
+      });
+    }
+    function enter(c) {
+      var why = spanProblem(c);
+      if (why) { sayWhy(why); return; }
+      op("enter", between(c.first, c.last), function () {
+        if (!c.range.collapsed) deleteSelection(c);
+        splitHere(caretBlock(), true);
+      });
+    }
+    function format(cmd) {
+      var c = selectionCtx();
+      if (!c || c.bad && !c.multi) return;
+      if (c.range.collapsed) {
+        // Sets the style for the next character typed; sync() picks it up from the DOM.
+        document.execCommand("styleWithCSS", false, false);
+        document.execCommand(cmd, false, null);
+        refreshDock();
+        return;
+      }
+      var blocks = between(c.first, c.last).filter(editable);
+      if (!blocks.length) return;
+      op("format", blocks, function () {
+        document.execCommand("styleWithCSS", false, false);
+        document.execCommand(cmd, false, null);
+        blocks.forEach(function (b) {
+          if (!b.isConnected) throw new EditError("vanished");
+          sync(b);
+        });
+      });
+      refreshDock();
+    }
+
+    /* ----- browser events ----- */
+    function onBeforeInput(e) {
+      if (!editing) return;
+      var t = e.inputType;
+      if (t === "historyUndo" || t === "historyRedo") { e.preventDefault(); if (t === "historyUndo") undoOp(); else redoOp(); return; }
+      if (/^format/.test(t)) {
+        e.preventDefault();
+        var cmd = { formatBold: "bold", formatItalic: "italic", formatUnderline: "underline", formatStrikeThrough: "strikeThrough" }[t];
+        if (cmd) format(cmd);
+        return;
+      }
+      if (/^insertFrom(Paste|Drop|Yank)|^deleteByDrag$|^insertLink$|List$|^insertHorizontalRule$/.test(t)) { if (e.cancelable) e.preventDefault(); return; }
+      var c = selectionCtx();
+      if (!c || (c.bad && !c.multi)) { if (e.cancelable) e.preventDefault(); nudgeLocked(); return; }
+      if (t === "insertParagraph") { e.preventDefault(); enter(c); return; }
+      if (t === "insertLineBreak") {
+        // Chrome would type a bare newline here (the page is pre-wrap); Word needs a real break.
+        e.preventDefault();
+        if (!c.range.collapsed && !replaceSelection(c, "", "type")) return;
+        lineBreak();
+        return;
+      }
+      if (/^insert/.test(t)) {
+        if (c.multi) {
+          if (e.cancelable) { e.preventDefault(); replaceSelection(c, e.data || "", "type"); }
+          return;
+        }
+        typing(c.block, "type");
+        return;
+      }
+      if (/^delete/.test(t)) {
+        if (c.multi) { e.preventDefault(); replaceSelection(c, "", "delete"); return; }
+        var block = c.block, r = c.range;
+        if (r.collapsed) {
+          var back = /Backward$/.test(t), off = hOffset(block, r.startContainer, r.startOffset), len = states[block.dataset.pid].h.length;
+          if (back && off === 0) { e.preventDefault(); mergeBack(block); return; }
+          if (!back && off >= len) { e.preventDefault(); mergeForward(block); return; }
+          var tr = e.getTargetRanges && e.getTargetRanges()[0];
+          if (tr && (blockOf(tr.startContainer) !== block || blockOf(tr.endContainer) !== block)) { e.preventDefault(); return; }
+        }
+        typing(block, "delete");
+        return;
+      }
+      if (e.cancelable) e.preventDefault();
+    }
+    function lineBreak() {
+      var block = caretBlock();
+      if (!block || !editable(block)) return;
+      op("type", [block], function () {
+        var sel = document.getSelection(), r = sel.getRangeAt(0), br = document.createElement("br");
+        r.insertNode(br);
+        r = document.createRange(); r.setStartAfter(br); r.collapse(true); sel.removeAllRanges(); sel.addRange(r);
+        if (readBlock(block, false).ph === br) addPlaceholder(block);
+        sync(block);
+      });
+    }
+    function onInput() {
+      if (!editing || busy) return;
+      if (open) syncOpen();
+      else {
+        // An input we didn't see coming: catch the XML up without an undo step.
+        var b = caretBlock();
+        if (b && states[b.dataset.pid]) { try { sync(b); } catch (e) { console.error(e); } }
+      }
+      aside();
+    }
+    function onKeyDown(e) {
+      if (!editing) return;
+      var mod = e.ctrlKey || e.metaKey, k = e.key.toLowerCase();
+      if (mod && !e.altKey && k === "z") { e.preventDefault(); if (e.shiftKey) redoOp(); else undoOp(); return; }
+      if (mod && !e.altKey && k === "y") { e.preventDefault(); redoOp(); return; }
+      if (mod && !e.altKey && !e.shiftKey && (k === "b" || k === "i" || k === "u")) {
+        e.preventDefault(); format({ b: "bold", i: "italic", u: "underline" }[k]); return;
+      }
+      if (mod && e.shiftKey && (k === "x" || k === "5")) { e.preventDefault(); format("strikeThrough"); return; }
+      if (e.key === "Tab" && !mod && !e.altKey) {
+        e.preventDefault();
+        if (e.shiftKey) return;
+        var c = selectionCtx();
+        if (c && !c.bad) replaceSelection(c, "\t", "type");
+      }
+    }
+    function onPaste(e) {
+      if (!editing) return;
+      e.preventDefault();
+      var text = (e.clipboardData && e.clipboardData.getData("text/plain")) || "";
+      var c = selectionCtx();
+      if (!c || (c.bad && !c.multi)) { nudgeLocked(); return; }
+      if (text || !c.range.collapsed) replaceSelection(c, text, "paste");
+    }
+    function onCut(e) {
+      if (!editing) return;
+      var c = selectionCtx();
+      if (!c || c.range.collapsed) return;
+      e.preventDefault();
+      if (e.clipboardData) e.clipboardData.setData("text/plain", c.range.toString());
+      replaceSelection(c, "", "cut");
+    }
+    function nudgeLocked() {
+      var now = Date.now();
+      if (now - lockToastAt < 8000) return;
+      lockToastAt = now;
+      host.toast("Folio keeps this part exactly as it is. Text boxes, footnotes and a few other things can't be edited here yet.");
+    }
+    docEl.addEventListener("beforeinput", onBeforeInput);
+    docEl.addEventListener("input", onInput);
+    docEl.addEventListener("keydown", onKeyDown);
+    docEl.addEventListener("paste", onPaste);
+    docEl.addEventListener("cut", onCut);
+    docEl.addEventListener("compositionstart", function () { composing = true; });
+    docEl.addEventListener("compositionend", function () { composing = false; });
+    docEl.addEventListener("dragstart", function (e) { if (editing) e.preventDefault(); });
+    docEl.addEventListener("click", function (e) {
+      if (!editing) return;
+      var a = e.target.closest("a[href]");
+      if (a && !/^#/.test(a.getAttribute("href"))) {
+        e.preventDefault(); e.stopPropagation();
+        if (e.ctrlKey || e.metaKey) window.open(a.href, "_blank", "noopener");
+      }
+      if (e.target.closest("[data-locked]")) nudgeLocked();
+    }, true);
+    document.addEventListener("selectionchange", function () {
+      if (!editing) return;
+      if (open && caretBlock() !== open.block) closeTyping();
+      refreshDock();
+    });
+
+    /* ----- the dock ----- */
+    var ICON = {
+      undo: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M9 14 4 9l5-5"/><path d="M4 9h10.5a5.5 5.5 0 0 1 0 11H11"/></svg>',
+      redo: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="m15 14 5-5-5-5"/><path d="M20 9H9.5a5.5 5.5 0 0 0 0 11H13"/></svg>',
+      copy: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="8" y="8" width="12" height="13" rx="2.5"/><path d="M16 8V5.5A2.5 2.5 0 0 0 13.5 3h-7A2.5 2.5 0 0 0 4 5.5v9A2.5 2.5 0 0 0 6.5 17H8"/></svg>',
+      replace: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z"/><path d="M14 3v5h5"/><path d="m9 14 2 2 4-4"/></svg>',
+      download: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 4v11M7 10l5 5 5-5M5 20h14"/></svg>'
+    };
+    function buildDock() {
+      if (dock) return;
+      dock = document.createElement("div");
+      dock.className = "dock";
+      dock.id = "dock";
+      dock.setAttribute("role", "toolbar");
+      dock.setAttribute("aria-label", "Editing");
+      dock.hidden = true;
+      dock.innerHTML =
+        '<div class="dock-group">'
+        + '<button class="dock-btn" data-cmd="bold" title="Bold (Ctrl+B)" aria-pressed="false"><b>B</b></button>'
+        + '<button class="dock-btn" data-cmd="italic" title="Italic (Ctrl+I)" aria-pressed="false"><i>I</i></button>'
+        + '<button class="dock-btn" data-cmd="underline" title="Underline (Ctrl+U)" aria-pressed="false"><u>U</u></button>'
+        + '<button class="dock-btn" data-cmd="strikeThrough" title="Strikethrough (Ctrl+Shift+X)" aria-pressed="false"><s>S</s></button>'
+        + '</div><span class="dock-sep"></span><div class="dock-group">'
+        + '<button class="dock-btn" id="undoBtn" title="Undo (Ctrl+Z)" aria-label="Undo">' + ICON.undo + '</button>'
+        + '<button class="dock-btn" id="redoBtn" title="Redo (Ctrl+Y)" aria-label="Redo">' + ICON.redo + '</button>'
+        + '</div><span class="dock-sep"></span>'
+        + '<span class="dock-status" id="dockStatus" role="status"><i></i><span>No changes yet</span></span>'
+        + '<button class="dock-save" id="saveBtn" title="Save (Ctrl+S)">Save</button>'
+        + '<button class="dock-done" id="doneBtn" title="Back to reading (Ctrl+E)">Done</button>';
+      document.body.appendChild(dock);
+      dock.addEventListener("mousedown", function (e) { if (e.target.closest(".dock-btn")) e.preventDefault(); });
+      dock.querySelectorAll("[data-cmd]").forEach(function (b) { b.onclick = function () { format(b.dataset.cmd); }; });
+      dock.querySelector("#undoBtn").onclick = undoOp;
+      dock.querySelector("#redoBtn").onclick = redoOp;
+      dock.querySelector("#saveBtn").onclick = function () { save("auto"); };
+      dock.querySelector("#doneBtn").onclick = function () { stopEditing(); };
+    }
+    function refreshDock() {
+      if (!dock || !editing) return;
+      dock.querySelectorAll("[data-cmd]").forEach(function (b) {
+        var on = false;
+        try { on = document.queryCommandState(b.dataset.cmd); } catch (e) {}
+        b.setAttribute("aria-pressed", String(!!on));
+      });
+    }
+    function dirty() { return !!S && ((open && open.tx.changed) || (undo.length ? undo[undo.length - 1].id : 0) !== savedId); }
+    function notify() {
+      var d = dirty();
+      if (dock) {
+        dock.querySelector("#undoBtn").disabled = !undo.length && !(open && open.tx.changed);
+        dock.querySelector("#redoBtn").disabled = !redo.length;
+        var st = dock.querySelector("#dockStatus");
+        st.classList.toggle("dirty", d);
+        st.querySelector("span").textContent = d ? "Unsaved changes" : (S && S.savedOnce ? "All changes saved" : "No changes yet");
+        dock.querySelector("#saveBtn").disabled = saving;
+      }
+      var dn = document.getElementById("docname");
+      if (dn) { if (d) dn.setAttribute("data-edited", ""); else dn.removeAttribute("data-edited"); }
+      if (D && D.setDirty) D.setDirty(d);
+      if (host.onDirty) host.onDirty(d);
+    }
+    function aside() {
+      clearTimeout(asideTimer);
+      asideTimer = setTimeout(function () { if (host.refreshAside) host.refreshAside(); }, 700);
+    }
+
+    /* ----- switching modes ----- */
+    function scrollAnchor() {
+      var top = (parseFloat(getComputedStyle(document.documentElement).getPropertyValue("--bar-h")) || 56) + 8;
+      var list = allBlocks();
+      for (var i = 0; i < list.length; i++) {
+        var r = list[i].getBoundingClientRect();
+        if (r.bottom > top && r.height) {
+          return { pids: list.slice(i, i + 12).map(function (b) { return b.dataset.pid; }), dy: r.top };
+        }
+      }
+      return null;
+    }
+    function restoreScroll(a) {
+      if (!a) return;
+      for (var i = 0; i < a.pids.length; i++) {
+        var el = docEl.querySelector('[data-pid="' + a.pids[i] + '"]');
+        if (el) { window.scrollBy(0, el.getBoundingClientRect().top - a.dy); return; }
+      }
+    }
+    function rerender(toEdit) {
+      var a = scrollAnchor();
+      return renderBuf().then(function (buf) { return host.render(buf, { editing: toEdit, keep: true }); })
+        .then(function () { restoreScroll(a); });
+    }
+    function startEditing() {
+      if (!S) return Promise.resolve();
+      if (!S.model) { host.toast(S.why || "This document can't be edited."); return Promise.resolve(); }
+      if (editing) return Promise.resolve();
+      return rerender(true).then(function () {
+        var first = docEl.querySelector("[data-pid]:not([data-locked])");
+        var sel = document.getSelection();
+        if (first && !(sel.rangeCount && blockOf(sel.getRangeAt(0).startContainer))) {
+          // put the caret in the first editable block that's on screen
+          var top = 80, list = allBlocks().filter(editable);
+          for (var i = 0; i < list.length; i++) if (list[i].getBoundingClientRect().bottom > top) { first = list[i]; break; }
+          docEl.focus({ preventScroll: true });
+          setCaret(first, 0);
+        }
+        try {
+          if (!localStorage.getItem("folio-edit-hint")) {
+            localStorage.setItem("folio-edit-hint", "1");
+            host.toast("Edit away! Your original file stays exactly as it is until you choose to replace it.");
+          }
+        } catch (e) {}
+      });
+    }
+    function stopEditing() {
+      if (!editing) return Promise.resolve();
+      closeTyping();
+      return rerender(false);
+    }
+    function toggle() { return editing ? stopEditing() : startEditing(); }
+
+    /* ----- saving ----- */
+    function baseName() {
+      return (S.name || "Document").replace(/\.(docx|docm|dotx)$/i, "").replace(/ \(edited( \d+)?\)$/i, "");
+    }
+    function buildDocx() {
+      var xml = S.model.serialize(), census = S.model.census(), now = new Date().toISOString().replace(/\.\d+Z$/, "Z");
+      return JSZip.loadAsync(S.buf.slice(0)).then(function (zip) {
+        zip.file("word/document.xml", xml, { createFolders: false });
+        var core = zip.file("docProps/core.xml");
+        return (core ? core.async("string") : Promise.resolve(null)).then(function (c) {
+          if (c && /<dcterms:modified\b[^>]*>[^<]*<\/dcterms:modified>/.test(c)) {
+            zip.file("docProps/core.xml", c.replace(/(<dcterms:modified\b[^>]*>)[^<]*(<\/dcterms:modified>)/, "$1" + now + "$2"), { createFolders: false });
+          }
+          return zip.generateAsync({ type: "uint8array", compression: "DEFLATE", compressionOptions: { level: 6 }, mimeType: DOCX });
+        });
+      }).then(function (bytes) { return verify(bytes, census).then(function () { return bytes; }); });
+    }
+    function allText(m) {
+      var ps = m.doc.getElementsByTagNameNS(FM.W, "p"), out = [];
+      for (var i = 0; i < ps.length; i++) out.push(m.textModel(m.pidOf(ps[i])).text);
+      return out.join(" ");
+    }
+    // Re-read the file about to be written and make sure nothing went missing.
+    function verify(bytes, census) {
+      return Promise.all([JSZip.loadAsync(bytes), JSZip.loadAsync(S.buf.slice(0))]).then(function (z) {
+        var out = z[0], orig = z[1], jobs = [];
+        Object.keys(orig.files).forEach(function (name) {
+          var f = orig.files[name];
+          if (f.dir || name === "word/document.xml" || name === "docProps/core.xml") return;
+          var g = out.file(name);
+          if (!g) throw new Error("missing part " + name);
+          jobs.push(Promise.all([f.async("uint8array"), g.async("uint8array")]).then(function (ab) {
+            var a = ab[0], b = ab[1];
+            if (a.length !== b.length) throw new Error("changed part " + name);
+            for (var i = 0; i < a.length; i++) if (a[i] !== b[i]) throw new Error("changed part " + name);
+          }));
+        });
+        // nothing new either: a stray folder entry is enough to upset OneDrive
+        Object.keys(out.files).forEach(function (name) { if (!orig.files[name]) throw new Error("unexpected part " + name); });
+        jobs.push(out.file("word/document.xml").async("string").then(function (x) {
+          var m2 = new FM.Model(x), c2 = m2.census();
+          Object.keys(census).forEach(function (k) {
+            if (census[k] !== c2[k]) throw new Error("census mismatch for " + k + ": " + census[k] + " vs " + c2[k]);
+          });
+          if (allText(m2) !== allText(S.model)) throw new Error("text changed in serialization");
+        }));
+        return Promise.all(jobs);
+      });
+    }
+    function save(mode) {
+      if (!S || !S.model || saving) return Promise.resolve(false);
+      closeTyping();
+      if (mode === "auto") {
+        if (S.target) mode = "overwrite";
+        else return chooseSave();
+      }
+      saving = true; notify();
+      var label = mode === "copy" ? "copy" : "save";
+      return buildDocx().then(function (bytes) {
+        if (!D || !D.saveDocx) return download(bytes);
+        return D.saveDocx({
+          mode: mode, bytes: bytes, path: S.target || S.path, sourcePath: S.path,
+          suggestedName: baseName() + " (edited).docx", expectedMtimeMs: S.mtime
+        });
+      }).then(function (res) {
+        saving = false;
+        if (!res || res.canceled) { notify(); return false; }
+        if (res.conflict) {
+          notify();
+          return ask({
+            title: "This file changed on disk",
+            body: "Someone (or something) changed “" + (S.name || "this document") + "” after Folio opened it. Replacing it would throw those changes away.",
+            buttons: [{ label: "Cancel", value: null, kind: "ghost" }, { label: "Replace anyway", value: "force", kind: "danger" }, { label: "Save a copy", value: "copy", kind: "primary" }]
+          }).then(function (v) {
+            if (v === "copy") return save("copy");
+            if (v === "force") { S.mtime = null; return save("overwrite"); }
+            return false;
+          });
+        }
+        if (res.error) {
+          notify();
+          host.toast(res.error === "locked"
+            ? "Couldn't save: the file is open in another app (probably Word). Close it there, or save a copy instead."
+            : "Couldn't save the file: " + res.error);
+          return false;
+        }
+        savedId = undo.length ? undo[undo.length - 1].id : 0;
+        S.savedOnce = true;
+        if (res.path) { S.target = res.path; S.path = res.path; }
+        if (res.mtimeMs) S.mtime = res.mtimeMs;
+        if (res.name) { S.name = res.name; if (host.setName) host.setName(res.name); }
+        notify();
+        host.toast(res.downloaded ? "Downloaded “" + res.name + "” ✨" : "Saved “" + (res.name || "your document") + "” ✨",
+          res.path && D && D.showInFolder ? { action: { label: "Show in folder", run: function () { D.showInFolder(res.path); } } } : null);
+        return true;
+      }).catch(function (e) {
+        saving = false; notify();
+        console.error("Folio save failed", e);
+        host.toast("Folio stopped the " + label + " because something didn't look right. Your file wasn't changed.");
+        return false;
+      });
+    }
+    function download(bytes) {
+      var name = baseName() + " (edited).docx";
+      var url = URL.createObjectURL(new Blob([bytes], { type: DOCX }));
+      var a = document.createElement("a");
+      a.href = url; a.download = name; document.body.appendChild(a); a.click(); a.remove();
+      setTimeout(function () { URL.revokeObjectURL(url); }, 10000);
+      return { ok: true, name: name, downloaded: true };
+    }
+    function chooseSave() {
+      var nm = baseName(), canReplace = !!(D && D.saveDocx && S.path);
+      var choices = [{ value: "copy", icon: D ? ICON.copy : ICON.download, title: D ? "Save as a copy" : "Download a copy", rec: true,
+        sub: "Your original stays untouched. The copy is called “" + nm + " (edited).docx”." }];
+      if (canReplace) choices.push({ value: "overwrite", icon: ICON.replace, title: "Replace the original",
+        sub: "Saves over “" + nm + ".docx”. Folio tucks a backup of the old version away, just in case." });
+      return ask({ title: "Save your edits", body: "How would you like to keep them?", choices: choices,
+        buttons: [{ label: "Cancel", value: null, kind: "ghost" }] }).then(function (v) { return v ? save(v) : false; });
+    }
+    // Before something would throw unsaved edits away. Resolves true to go ahead.
+    function confirmDiscard(what) {
+      if (!dirty()) return Promise.resolve(true);
+      return ask({
+        title: "Keep your edits?",
+        body: "You've changed “" + baseName() + "”" + (what ? " and " + what : "") + ". Save your edits first?",
+        buttons: [{ label: "Keep editing", value: null, kind: "ghost" }, { label: "Discard edits", value: "discard", kind: "danger" }, { label: "Save…", value: "save", kind: "primary" }]
+      }).then(function (v) {
+        if (v === "discard") { savedId = undo.length ? undo[undo.length - 1].id : 0; open = null; notify(); return true; }
+        if (v === "save") return save("auto").then(function (ok) { return !!ok && !dirty(); });
+        return false;
+      });
+    }
+
+    /* ----- a small modal ----- */
+    var modalOpen = false;
+    function ask(o) {
+      return new Promise(function (resolve) {
+        modalOpen = true;
+        var scrim = document.createElement("div");
+        scrim.className = "sheet-scrim";
+        var html = '<div class="sheet" role="dialog" aria-modal="true" aria-labelledby="sheetTitle"><h2 id="sheetTitle"></h2><p class="sheet-sub"></p>';
+        if (o.choices) html += '<div class="choices"></div>';
+        html += '<div class="sheet-foot"></div></div>';
+        scrim.innerHTML = html;
+        scrim.querySelector("h2").textContent = o.title;
+        scrim.querySelector(".sheet-sub").textContent = o.body || "";
+        var prevFocus = document.activeElement, sel = document.getSelection(), saved = sel.rangeCount ? sel.getRangeAt(0).cloneRange() : null;
+        function done(v) {
+          modalOpen = false;
+          document.removeEventListener("keydown", onKey, true);
+          scrim.classList.add("leaving");
+          setTimeout(function () { scrim.remove(); }, 160);
+          if (prevFocus && prevFocus.focus) prevFocus.focus({ preventScroll: true });
+          if (saved && editing) { try { sel.removeAllRanges(); sel.addRange(saved); } catch (e) {} }
+          resolve(v);
+        }
+        (o.choices || []).forEach(function (c) {
+          var b = document.createElement("button");
+          b.className = "choice";
+          b.innerHTML = '<span class="choice-ic">' + c.icon + '</span><span class="choice-txt"><strong></strong><small></small></span>';
+          b.querySelector("strong").textContent = c.title;
+          if (c.rec) { var r = document.createElement("em"); r.className = "rec"; r.textContent = "Recommended"; b.querySelector("strong").appendChild(r); }
+          b.querySelector("small").textContent = c.sub;
+          b.onclick = function () { done(c.value); };
+          scrim.querySelector(".choices").appendChild(b);
+        });
+        (o.buttons || []).forEach(function (c) {
+          var b = document.createElement("button");
+          b.className = "sheet-btn " + (c.kind || "");
+          b.textContent = c.label;
+          b.onclick = function () { done(c.value); };
+          scrim.querySelector(".sheet-foot").appendChild(b);
+        });
+        scrim.addEventListener("mousedown", function (e) { if (e.target === scrim) done(null); });
+        function onKey(e) {
+          if (e.key === "Escape") { e.preventDefault(); e.stopPropagation(); done(null); }
+        }
+        document.addEventListener("keydown", onKey, true);
+        document.body.appendChild(scrim);
+        var first = scrim.querySelector(".choice, .sheet-btn.primary, .sheet-btn");
+        if (first) first.focus();
+      });
+    }
+
+    /* ----- desktop: closing the window with unsaved edits ----- */
+    if (D && D.onConfirmClose) D.onConfirmClose(function () {
+      if (modalOpen) return;
+      confirmDiscard("are closing Folio").then(function (go) { if (go && D.closeNow) D.closeNow(); });
+    });
+
+    return {
+      load: load, attach: attach, toggle: toggle, enter: startEditing, exit: stopEditing, save: save,
+      confirmDiscard: confirmDiscard, isDirty: dirty, isEditing: function () { return editing; },
+      canEdit: function () { return !!(S && S.model); },
+      // for tests
+      _debug: function () { return { S: S, states: states, undo: undo, redo: redo, model: S && S.model, buildDocx: buildDocx }; }
+    };
+  }
+
+  window.FolioEditor = { create: create, _align: align };
+})();
+
+</script>
+<script>
 (function () {
   "use strict";
   var SAMPLE_B64 = "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";
 
   var $ = function (id) { return document.getElementById(id); };
+  var editor = null, lastExtras = null;
   var root = document.documentElement;
   var docEl = $("doc"), tocEl = $("toc"), metaEl = $("meta"), progressEl = $("progress");
 
@@ -539,10 +2538,33 @@ body.focus .bar:hover, body.focus .bar:focus-within { opacity: 1; }
 
   /* toast */
   var toastTimer;
-  function toast(msg) {
+  function toast(msg, opts) {
     var t = $("toast"); t.textContent = msg; t.hidden = false;
-    clearTimeout(toastTimer); toastTimer = setTimeout(function () { t.hidden = true; }, 5200);
+    if (opts && opts.action) {
+      var b = document.createElement("button"); b.className = "toast-act"; b.textContent = opts.action.label;
+      b.onclick = function () { t.hidden = true; opts.action.run(); };
+      t.appendChild(b);
+    }
+    clearTimeout(toastTimer); toastTimer = setTimeout(function () { t.hidden = true; }, opts && opts.action ? 8000 : 5200);
   }
+
+  /* ---------- editing ---------- */
+  if (window.FolioEditor && window.FolioModel) {
+    editor = FolioEditor.create({
+      docEl: docEl,
+      desktop: window.folioDesktop || null,
+      toast: toast,
+      render: function (buf, opts) { return render(buf, current.name, current.isSample, opts); },
+      refreshAside: function () { buildToc(); buildMeta(current.name, lastExtras || {}, current.isSample); updateProgress(); },
+      setName: function (name) {
+        current = { name: name, isSample: false };
+        var pretty = name.replace(/\.(docx|docm|dotx)$/i, "").replace(/[_]+/g, " ").trim();
+        $("docname").textContent = pretty;
+        document.title = pretty + " · Folio";
+      }
+    });
+    $("editBtn").onclick = function () { editor.toggle(); };
+  } else $("editBtn").hidden = true;
 
   /* ---------- opening files ---------- */
   var fileInput = $("fileInput");
@@ -567,11 +2589,19 @@ body.focus .bar:hover, body.focus .bar:focus-within { opacity: 1; }
     }
     file.arrayBuffer().then(function (buf) { openBuffer(buf, name); });
   }
-  function openBuffer(buf, name) {
-    document.body.classList.add("loading");
-    return Promise.resolve(buf).then(function (buf) { return render(buf, name, false); })
-      .catch(function (err) { console.error(err); toast("Couldn't read " + name + ". The file may be damaged or password-protected."); })
-      .then(function () { document.body.classList.remove("loading"); });
+  var current = { name: "Sample document", isSample: true };
+  function openBuffer(buf, name, info) {
+    var ask = editor ? editor.confirmDiscard("want to open " + name) : Promise.resolve(true);
+    return ask.then(function (go) {
+      if (!go) return;
+      document.body.classList.add("loading");
+      info = info || {};
+      current = { name: name, isSample: !!info.isSample };
+      var prep = editor ? editor.load(buf, name, info) : Promise.resolve(buf);
+      return prep.then(function (b) { return render(b, name, !!info.isSample); })
+        .catch(function (err) { console.error(err); toast("Couldn't read " + name + ". The file may be damaged or password-protected."); })
+        .then(function () { document.body.classList.remove("loading"); });
+    });
   }
 
   /* ---------- rendering ---------- */
@@ -633,7 +2663,8 @@ body.focus .bar:hover, body.focus .bar:focus-within { opacity: 1; }
     used[id] = true; return id;
   }
 
-  function render(buf, name, isSample) {
+  function render(buf, name, isSample, opts) {
+    opts = opts || {};
     if (!window.mammoth) { toast("The document engine didn't load. Check your connection and reload the page."); return Promise.resolve(); }
     return Promise.all([
       mammoth.convertToHtml({ arrayBuffer: buf }, { styleMap: STYLE_MAP }),
@@ -641,19 +2672,21 @@ body.focus .bar:hover, body.focus .bar:focus-within { opacity: 1; }
     ]).then(function (res) {
       var result = res[0], extras = res[1];
       docEl.innerHTML = result.value || "<p><em>This document is empty.</em></p>";
-      polish(extras);
+      polish(extras, !!opts.editing);
+      if (editor) editor.attach(!!opts.editing);
       buildToc();
       buildMeta(name, extras, isSample);
+      lastExtras = extras;
       var pretty = name.replace(/\.(docx|docm|dotx)$/i, "").replace(/[_]+/g, " ").trim();
       $("docname").textContent = isSample ? "Sample document" : pretty;
       document.title = isSample ? "Folio Reader" : pretty + " · Folio";
       document.body.classList.remove("rail-open");
-      window.scrollTo({ top: 0, behavior: "instant" in window ? "instant" : "auto" });
+      if (!opts.keep) window.scrollTo({ top: 0, behavior: "instant" in window ? "instant" : "auto" });
       updateProgress();
     });
   }
 
-  function polish(extras) {
+  function polish(extras, editing) {
     // picture sizes, in document order
     var imgs = docEl.querySelectorAll("img");
     if (extras.sizes.length === imgs.length) {
@@ -674,6 +2707,8 @@ body.focus .bar:hover, body.focus .bar:focus-within { opacity: 1; }
       });
     }
     imgs.forEach(function (img) { if (!img.alt) img.alt = ""; img.loading = "lazy"; img.decoding = "async"; });
+    // a paragraph that is only a picture is shown centred, like a figure
+    docEl.querySelectorAll("p").forEach(function (p) { if (p.querySelector("img") && !p.textContent.trim()) p.classList.add("pic"); });
 
     // tables scroll sideways inside their own frame
     docEl.querySelectorAll("table").forEach(function (t) {
@@ -689,8 +2724,8 @@ body.focus .bar:hover, body.focus .bar:focus-within { opacity: 1; }
       else if (h.charAt(0) !== "#") a.removeAttribute("href");
     });
 
-    // trailing line breaks Word leaves inside paragraphs
-    docEl.querySelectorAll("p").forEach(function (p) {
+    // trailing line breaks Word leaves inside paragraphs (edit mode shows the document as it is)
+    if (!editing) docEl.querySelectorAll("p").forEach(function (p) {
       for (var guard = 0; guard < 20; guard++) {
         var n = p; while (n.lastChild) n = n.lastChild;
         if (n === p) break;
@@ -701,7 +2736,10 @@ body.focus .bar:hover, body.focus .bar:focus-within { opacity: 1; }
         while (parent !== p && !parent.childNodes.length) { var up = parent.parentNode; parent.remove(); parent = up; }
       }
     });
-    docEl.querySelectorAll("p").forEach(function (p) { if (!p.textContent.trim() && !p.querySelector("img")) p.remove(); });
+    if (!editing) {
+      docEl.querySelectorAll("p, h1, h2, h3, h4, h5, h6, li").forEach(function (p) { if (!p.textContent.trim() && !p.querySelector("img")) p.remove(); });
+      docEl.querySelectorAll("blockquote, ul, ol").forEach(function (c) { if (!c.textContent.trim() && !c.querySelector("img")) c.remove(); });
+    }
 
     // footnote list
     var last = docEl.lastElementChild;
@@ -801,6 +2839,12 @@ body.focus .bar:hover, body.focus .bar:focus-within { opacity: 1; }
   /* ---------- keyboard ---------- */
   document.addEventListener("keydown", function (e) {
     if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "o") { e.preventDefault(); fileInput.click(); return; }
+    if ((e.ctrlKey || e.metaKey) && !e.altKey && e.key.toLowerCase() === "e") { e.preventDefault(); if (editor) editor.toggle(); return; }
+    if ((e.ctrlKey || e.metaKey) && !e.altKey && e.key.toLowerCase() === "s") {
+      e.preventDefault();
+      if (editor && editor.canEdit()) editor.save(e.shiftKey ? "copy" : "auto");
+      return;
+    }
     if (e.target.closest("input, textarea, [contenteditable]")) return;
     if (e.key === "Escape") { setPop(false); setFocus(false); document.body.classList.remove("rail-open"); }
     if (!e.ctrlKey && !e.metaKey && !e.altKey) {
@@ -816,7 +2860,7 @@ body.focus .bar:hover, body.focus .bar:focus-within { opacity: 1; }
     for (var i = 0; i < len; i++) bytes[i] = bin.charCodeAt(i);
     return bytes.buffer;
   }
-  window.__folio = { openBuffer: openBuffer, toast: toast };
-  render(b64ToBuf(SAMPLE_B64), "Sample document", true).catch(function (e) { console.error(e); });
+  window.__folio = { openBuffer: openBuffer, toast: toast, editor: editor };
+  openBuffer(b64ToBuf(SAMPLE_B64), "Sample document", { isSample: true });
 })();
 </script>

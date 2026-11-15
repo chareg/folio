@@ -1,3 +1,7 @@
 node_modules/
 dist/
 *.log
+test/out/
+# private real-world documents used only for local testing
+test/fixtures/private/
+test/fixtures/signature.docx

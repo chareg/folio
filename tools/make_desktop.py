@@ -5,8 +5,12 @@ import base64, os
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__))) + '/'
 sample = base64.b64encode(open(ROOT + 'tools/sample.docx', 'rb').read()).decode()
 t = open(ROOT + 'tools/web-template.html').read().replace('__SAMPLE__', sample)
-open(ROOT + 'web/index.html', 'w').write(t)
-d=t
+EDITOR = ['app/editor/model.js', 'app/editor/editor.js']
+assert t.count('<!--FOLIO-EDITOR-->') == 1
+# The browser version is one self-contained file; the desktop app loads the scripts from app/editor/.
+web = t.replace('<!--FOLIO-EDITOR-->', '\n'.join('<script>\n' + open(ROOT + f).read().replace('</script', '<\\/script') + '\n</script>' for f in EDITOR))
+open(ROOT + 'web/index.html', 'w').write(web)
+d=t.replace('<!--FOLIO-EDITOR-->', '\n'.join('<script src="%s"></script>' % f[len('app/'):] for f in EDITOR))
 d=re.sub(r'<link rel="preconnect"[^>]*>\n','',d)
 d=re.sub(r'<link rel="stylesheet" href="https://fonts.googleapis.com[^>]*>','<link rel="stylesheet" href="fonts.css">',d)
 d=d.replace('<meta name="claude:viewport-fit-sides" content="cover">\n','')
@@ -71,7 +75,7 @@ desk_js='''<script>
   if (!D || !F) return;
   document.documentElement.classList.add("desktop");
   function toBuf(u8) { return u8.buffer.slice(u8.byteOffset, u8.byteOffset + u8.byteLength); }
-  D.onOpenFile(function (f) { F.openBuffer(toBuf(f.bytes), f.name); });
+  D.onOpenFile(function (f) { F.openBuffer(toBuf(f.bytes), f.name, { path: f.path, mtimeMs: f.mtimeMs }); });
   document.getElementById("openBtn").onclick = function () { D.openDialog(); };
   window.addEventListener("keydown", function (e) {
     if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "o") { e.preventDefault(); e.stopImmediatePropagation(); D.openDialog(); }
@@ -110,7 +114,7 @@ desk_js='''<script>
         break;
       case "ready":
         btn.disabled = false; btn.textContent = "Restart to update";
-        btn.onclick = function () { D.installUpdate(); };
+        btn.onclick = install;
         say("Version " + s.version + " is ready. Folio will restart and reopen in a moment.");
         pill.hidden = false; manual = false; break;
       case "dev":
@@ -124,7 +128,12 @@ desk_js='''<script>
   }
   if (D.onUpdateStatus) D.onUpdateStatus(onStatus);
   btn.onclick = function () { manual = true; D.checkForUpdates(); };
-  pill.onclick = function () { D.installUpdate(); };
+  // Restarting would lose unsaved edits, so ask first.
+  function install() {
+    var ask = F.editor ? F.editor.confirmDiscard("want to restart to update") : Promise.resolve(true);
+    ask.then(function (go) { if (go) D.installUpdate(); });
+  }
+  pill.onclick = install;
 })();
 </script>'''
 csp='<meta http-equiv="Content-Security-Policy" content="default-src \'self\'; img-src \'self\' data: blob:; style-src \'self\' \'unsafe-inline\'; script-src \'self\' \'unsafe-inline\'; font-src \'self\'; connect-src \'self\' data: blob:">'
