@@ -1,7 +1,7 @@
 {
   "name": "folio-reader",
   "productName": "Folio",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "description": "A calm, beautiful reader for Word documents",
   "main": "main.js",
   "author": "Chare",
