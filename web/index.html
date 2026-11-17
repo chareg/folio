@@ -1610,18 +1610,42 @@ body.is-editing .endmark { opacity: .25; }
     }
     // What a selection covers: one block, or a run of blocks.
     function classify(r) {
-      var a = blockOf(r.startContainer), b = r.collapsed ? a : blockOf(r.endContainer);
-      if (!a || !b) return null;
-      if (a !== b && !r.collapsed && hOffset(b, r.endContainer, r.endOffset) === 0) {
-        // a triple-click selects up to the start of the next paragraph; leave that one alone
-        var list = allBlocks(), j = list.indexOf(b);
-        if (j > 0 && list.indexOf(a) <= j - 1) b = list[j - 1];
-        r = r.cloneRange();
-        var end = domAt(b, readBlock(b, false).text.length);
-        r.setEnd(end[0], end[1]);
+      var a = blockOf(r.startContainer), b = r.collapsed ? a : blockOf(r.endContainer), trimmed = false;
+      if (!a) return null;
+      if (!r.collapsed && a !== b && (!b || hOffset(b, r.endContainer, r.endOffset) === 0)) {
+        // A triple-click selects a paragraph up to the start of whatever follows it (the next
+        // paragraph, a heading, a list, the footnotes). Only the paragraph itself is meant.
+        var t = trimTail(r, a, b);
+        if (t) { r = t.range; b = t.block; trimmed = true; }
       }
-      if (!editable(a) || !editable(b)) return { range: r, first: a, last: b, multi: a !== b, bad: true };
-      return { range: r, first: a, last: b, block: a, multi: a !== b };
+      if (!b) return null;
+      if (!editable(a) || !editable(b)) return { range: r, first: a, last: b, multi: a !== b, bad: true, trimmed: trimmed };
+      return { range: r, first: a, last: b, block: a, multi: a !== b, trimmed: trimmed };
+    }
+    // The selection ended just past a block (at the start of the next thing): pull its end back
+    // to the end of the last block it really covers, if nothing visible lies in between.
+    function trimTail(r, a, b) {
+      var list = allBlocks(), ia = list.indexOf(a), endPt = document.createRange(), last = null;
+      endPt.setStart(r.endContainer, r.endOffset);
+      for (var i = ia; i >= 0 && i < list.length; i++) {
+        // blocks that start before the end point; the last of them is where the selection really ends
+        if (list[i] === b || endPt.comparePoint(list[i], 0) >= 0) break;
+        last = list[i];
+      }
+      if (!last) return null;
+      var end = domAt(last, readBlock(last, false).text.length), tail = document.createRange();
+      try { tail.setStart(end[0], end[1]); tail.setEnd(r.endContainer, r.endOffset); } catch (e) { return null; }
+      if (tail.collapsed) return null;
+      // only the edges of blocks may lie in between: no text, no pictures
+      if (tail.toString().trim() || tail.cloneContents().querySelector("img,input")) return null;
+      var out = r.cloneRange();
+      out.setEnd(end[0], end[1]);
+      return { range: out, block: last };
+    }
+    // Make the live selection match a trimmed one, so the browser and Folio agree on what's selected.
+    function useRange(r) {
+      var sel = document.getSelection();
+      sel.removeAllRanges(); sel.addRange(r.cloneRange());
     }
     function between(a, b) {
       var list = allBlocks(), i = list.indexOf(a), j = list.indexOf(b);
@@ -1637,9 +1661,20 @@ body.is-editing .endmark { opacity: .25; }
       var xkids = Array.prototype.slice.call(xr.parent.childNodes, xr.start, xr.start + xr.len);
       return {
         id: ++seq, kind: kind, changed: false, sel0: saveSel(),
-        html: { start: lo, len: hi - lo + 1, count: kids.length, before: kids.slice(lo, hi + 1).map(function (n) { return n.cloneNode(true); }) },
+        html: { start: lo, len: hi - lo + 1, count: kids.length, before: kids.slice(lo, hi + 1).map(function (n) { return n.cloneNode(true); }),
+          blocks: blocksIn(kids.slice(lo, hi + 1)) },
         xml: { parent: xr.parent, start: xr.start, len: xr.len, count: xr.count, before: xkids.map(function (n) { return n.cloneNode(true); }) }
       };
+    }
+    // Every block in a stretch of top-level nodes, in order.
+    function blocksIn(nodes) {
+      var out = [];
+      nodes.forEach(function (n) {
+        if (n.nodeType !== 1) return;
+        if (n.hasAttribute("data-pid")) out.push(n);
+        out.push.apply(out, n.querySelectorAll("[data-pid]"));
+      });
+      return out;
     }
     function seal(tx) {
       tx.html.lenAfter = tx.html.len + (docEl.childNodes.length - tx.html.count);
@@ -1807,6 +1842,10 @@ body.is-editing .endmark { opacity: .25; }
         var n = kids[i];
         if (n.nodeType === 3 && n.data.trim()) throw new EditError("stray");
       }
+      // ...and never merge, drop or add a paragraph (say, two list items run together)
+      var now = blocksIn(Array.prototype.slice.call(kids, tx.html.start, tx.html.start + tx.html.len)), was = tx.html.blocks;
+      if (now.length !== was.length) throw new EditError("blocks");
+      for (i = 0; i < now.length; i++) if (now[i] !== was[i] || now[i].dataset.pid !== was[i].dataset.pid) throw new EditError("blocks");
     }
 
     /* ----- structural edits ----- */
@@ -2015,6 +2054,7 @@ body.is-editing .endmark { opacity: .25; }
     function format(cmd) {
       var c = selectionCtx();
       if (!c || c.bad && !c.multi) return;
+      if (c.trimmed) useRange(c.range);
       if (c.range.collapsed) {
         // Sets the style for the next character typed; sync() picks it up from the DOM.
         document.execCommand("styleWithCSS", false, false);
@@ -2049,6 +2089,9 @@ body.is-editing .endmark { opacity: .25; }
       if (/^insertFrom(Paste|Drop|Yank)|^deleteByDrag$|^insertLink$|List$|^insertHorizontalRule$/.test(t)) { if (e.cancelable) e.preventDefault(); return; }
       var c = selectionCtx();
       if (!c || (c.bad && !c.multi)) { if (e.cancelable) e.preventDefault(); nudgeLocked(); return; }
+      // A trimmed selection (a triple-click) differs from the browser's own: from here on Folio
+      // makes the change itself, so the paragraph after it is never touched.
+      if (c.trimmed) useRange(c.range);
       if (t === "insertParagraph") { e.preventDefault(); enter(c); return; }
       if (t === "insertLineBreak") {
         // Chrome would type a bare newline here (the page is pre-wrap); Word needs a real break.
@@ -2058,7 +2101,7 @@ body.is-editing .endmark { opacity: .25; }
         return;
       }
       if (/^insert/.test(t)) {
-        if (c.multi) {
+        if (c.multi || c.trimmed) {
           if (e.cancelable) { e.preventDefault(); replaceSelection(c, e.data || "", "type"); }
           return;
         }
@@ -2066,7 +2109,7 @@ body.is-editing .endmark { opacity: .25; }
         return;
       }
       if (/^delete/.test(t)) {
-        if (c.multi) { e.preventDefault(); replaceSelection(c, "", "delete"); return; }
+        if (c.multi || c.trimmed) { e.preventDefault(); replaceSelection(c, "", "delete"); return; }
         var block = c.block, r = c.range;
         if (r.collapsed) {
           var back = /Backward$/.test(t), off = hOffset(block, r.startContainer, r.startOffset), len = states[block.dataset.pid].h.length;
@@ -2144,7 +2187,11 @@ body.is-editing .endmark { opacity: .25; }
     docEl.addEventListener("keydown", onKeyDown);
     docEl.addEventListener("paste", onPaste);
     docEl.addEventListener("cut", onCut);
-    docEl.addEventListener("compositionstart", function () { composing = true; });
+    docEl.addEventListener("compositionstart", function () {
+      composing = true;
+      var c = editing && selectionCtx();
+      if (c && c.trimmed) useRange(c.range);
+    });
     docEl.addEventListener("compositionend", function () { composing = false; });
     docEl.addEventListener("dragstart", function (e) { if (editing) e.preventDefault(); });
     docEl.addEventListener("click", function (e) {
