@@ -1,0 +1,44 @@
+name: Android
+
+on:
+  push:
+    paths: ["android/**", "app/fonts/**", "app/fonts.css", "app/vendor/**", "tools/web-template.html", ".github/workflows/android.yml"]
+  pull_request:
+    paths: ["android/**", ".github/workflows/android.yml"]
+  workflow_dispatch:
+
+jobs:
+  apk:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Android build tools
+        run: sudo apt-get update -qq && sudo apt-get install -y -qq aapt apksigner zipalign dalvik-exchange
+      - name: Signing key (optional)
+        env:
+          KEYSTORE_B64: ${{ secrets.FOLIO_ANDROID_KEYSTORE_B64 }}
+        run: |
+          if [ -n "$KEYSTORE_B64" ]; then
+            echo "$KEYSTORE_B64" | base64 -d > "$RUNNER_TEMP/folio.jks"
+            echo "FOLIO_KEYSTORE=$RUNNER_TEMP/folio.jks" >> "$GITHUB_ENV"
+          fi
+      - name: Build APK
+        working-directory: android
+        env:
+          FOLIO_KEYSTORE_PASS: ${{ secrets.FOLIO_ANDROID_KEYSTORE_PASS }}
+        run: npm ci --no-audit --no-fund && ./build.sh
+      - name: Smoke test in a phone-sized browser
+        working-directory: android
+        run: |
+          npm install --no-save --no-audit --no-fund playwright@1
+          npx playwright install --with-deps chromium
+          node test/smoke.js
+      - uses: actions/upload-artifact@v4
+        with:
+          name: Folio-android
+          path: |
+            android/build/Folio.apk
+            android/test/out/*.png

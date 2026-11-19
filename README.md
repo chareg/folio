@@ -2,6 +2,8 @@
 
 A calm, beautiful reader for Word documents on Windows.
 
+There's also **[Folio for Android](android/)**, a read-only reader for PDFs and Word documents with proper dark-mode PDFs.
+
 Open a `.docx`, or drop one onto the window, and Folio shows it in an easy-to-read layout. You get a contents list, reading progress, and three moods: Paper, Mist and Night. You can adjust the text size, typeface and column width. Your files never leave your computer.
 
 ## Editing
