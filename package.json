@@ -24,8 +24,8 @@
     "productName": "Folio",
     "files": ["main.js", "preload.js", "app/**/*", "package.json"],
     "fileAssociations": [
-      { "ext": "docx", "name": "Word Document", "description": "Word Document", "role": "Viewer" },
-      { "ext": "pdf", "name": "PDF Document", "description": "PDF Document", "role": "Viewer" }
+      { "ext": "docx", "name": "Folio.Docx", "description": "Word Document", "icon": "docx", "role": "Viewer" },
+      { "ext": "pdf", "name": "Folio.Pdf", "description": "PDF Document", "icon": "pdf", "role": "Viewer" }
     ],
     "win": { "target": ["nsis"], "icon": "build/icon.ico" },
     "nsis": {
