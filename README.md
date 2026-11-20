@@ -76,7 +76,7 @@ npm ci && xvfb-run -a node test/pdf.e2e.js   # the PDF reader in the real Electr
 | `app/vendor/pdfjs/` | pdf.js 4.10.38 (legacy build), its CMaps and standard fonts. Refresh with `tools/vendor_pdfjs.sh` |
 | `app/editor/` | Edit mode: `model.js` edits the document XML in place, `editor.js` runs the page |
 | `test/` | Model tests, browser tests and the fixture generator |
-| `build/` | App icons |
+| `build/` | App icon, plus the `.docx` and `.pdf` file icons (rebuild with `node tools/make_file_icons.js`) |
 | `web/index.html` | The browser version of Folio (Word documents only; PDFs need the desktop app) |
 | `tools/` | `make_desktop.py` regenerates `app/index.html` from `tools/web-template.html`; `make_sample_docx.py` builds the welcome document |
 
