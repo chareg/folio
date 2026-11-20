@@ -120,6 +120,27 @@ async function main() {
       });
     },
     async save(name) { const b = await H.bytes(); const f = path.join(OUT, name); fs.writeFileSync(f, b); return f; },
+    // click `count` times with the real mouse on the text `needle` (+ delta characters in)
+    async clickIn(needle, count, delta = 2) {
+      const pt = await page.evaluate(({ needle, delta }) => {
+        const b = [...document.querySelectorAll("#doc [data-pid]")].find((b) => b.textContent.includes(needle));
+        if (!b) return null;
+        b.scrollIntoView({ block: "center" });
+        const walker = document.createTreeWalker(b, NodeFilter.SHOW_TEXT);
+        let n;
+        while ((n = walker.nextNode())) {
+          const i = n.data.indexOf(needle);
+          if (i < 0) continue;
+          const r = document.createRange(); r.setStart(n, i + delta); r.setEnd(n, i + delta + 1);
+          const q = r.getBoundingClientRect();
+          return { x: q.x + q.width / 2, y: q.y + q.height / 2 };
+        }
+        return null;
+      }, { needle, delta });
+      assert.ok(pt, "click target not found: " + needle);
+      for (let i = 1; i <= count; i++) await page.mouse.click(pt.x, pt.y, { clickCount: i });
+    },
+    async selected() { return page.evaluate(() => getSelection().toString()); },
     key: (k) => page.keyboard.press(k),
     type: (t) => page.keyboard.type(t, { delay: 5 })
   };
@@ -408,6 +429,140 @@ async function main() {
     await H.key("Control+a");
     await H.key("Delete");
     assert.strictEqual(await H.xml(), before);
+  });
+
+  // ---------- selecting with the mouse, then deleting or typing ----------
+  console.log("mouse selections");
+  await H.open(sink);
+  const fresh = await H.xml();
+  await H.edit();
+  const para = async (start) => (await H.texts()).filter((s) => s.startsWith(start));
+  const drawings = (x) => (x.match(/<w:drawing>/g) || []).length;
+
+  await check("triple-click a paragraph, Backspace empties it and leaves the heading after it", async () => {
+    await H.clickIn("Plain middle", 3);
+    assert.ok((await H.selected()).startsWith("Bold start."), await H.selected());
+    await H.key("Backspace");
+    const ts = await H.texts();
+    assert.ok(!ts.some((t) => t.includes("Plain middle")), ts.join(" | "));
+    assert.strictEqual(ts[ts.indexOf("Links and fields") - 1], "");
+    assert.ok(!errors.some((e) => /rolled back/.test(e)), "nothing rolled back");
+    assert.deepStrictEqual(await H.consistent(), []);
+    await H.key("Control+z");
+    assert.strictEqual(await H.xml(), fresh);
+  });
+
+  await check("a second Backspace then removes the empty line", async () => {
+    await H.clickIn("Tracked inserted", 3);
+    await H.key("Backspace");
+    await H.key("Backspace");
+    const ts = await H.texts(), i = ts.indexOf("Lists");
+    assert.strictEqual(ts[i - 1], "A sentence with a footnote\ufffc and text after it.", ts.slice(0, 12).join(" | "));
+    assert.ok(!ts.includes("Tracked inserted changes."));
+    await H.key("Control+z"); await H.key("Control+z");
+    assert.strictEqual(await H.xml(), fresh);
+  });
+
+  await check("triple-click a list item, Delete empties only that item", async () => {
+    await H.clickIn("Second bullet", 3);
+    await H.key("Delete");
+    const ts = await H.texts();
+    const i = ts.indexOf("First bullet");
+    assert.deepStrictEqual(ts.slice(i, i + 3), ["First bullet", "", "Third bullet"]);
+    assert.strictEqual(ts.filter((t) => t === "Third bullet").length, 1);
+    assert.deepStrictEqual(await H.consistent(), []);
+    await H.key("Control+z");
+    assert.strictEqual(await H.xml(), fresh);
+  });
+
+  await check("triple-click and type replaces the paragraph's text", async () => {
+    await H.clickIn("Bookmarked words", 3);
+    await H.type("Fresh words.");
+    const ts = await H.texts();
+    assert.ok(ts.includes("Fresh words.") && ts.includes("Tabs\there and a line\nbreak inside one paragraph."), ts.join(" | "));
+    assert.ok(/<w:bookmarkStart w:id="77" w:name="keep_me"\/>/.test(await H.xml()), "bookmark kept");
+    assert.deepStrictEqual(await H.consistent(), []);
+  });
+
+  await check("triple-click the last paragraph (before the footnotes) and delete it", async () => {
+    await H.clickIn("Last paragraph", 3);
+    await H.key("Backspace");
+    const ts = await H.texts();
+    assert.ok(!ts.some((t) => t.startsWith("Last paragraph")), ts.slice(-4).join(" | "));
+    assert.ok(/footnote text/.test(await page.$eval("#doc", (d) => d.textContent)), "footnotes still shown");
+    assert.deepStrictEqual(await H.consistent(), []);
+  });
+
+  await check("triple-click a paragraph with a picture deletes the picture with it", async () => {
+    const before = drawings(await H.xml());
+    await H.clickIn("picture in a sentence", 3);
+    await H.key("Backspace");
+    const x = await H.xml();
+    assert.strictEqual(drawings(x), before - 1);
+    assert.ok(!(await H.texts()).some((t) => t.includes("picture in a sentence")));
+    assert.ok((await H.texts()).includes("End of section one."));
+    assert.deepStrictEqual(await H.consistent(), []);
+  });
+
+  await check("triple-click a table cell, Backspace empties just that cell", async () => {
+    await H.clickIn("Writes code", 3);
+    await H.key("Backspace");
+    const ts = await H.texts();
+    assert.ok(!ts.includes("Writes code") && ts.includes("Engineer") && ts.includes("Bo"), ts.join(" | "));
+    assert.deepStrictEqual(await H.consistent(), []);
+  });
+
+  await check("double-click a word, Backspace deletes the word", async () => {
+    await H.clickIn("website", 2);
+    assert.strictEqual((await H.selected()).trim(), "website");
+    await H.key("Backspace");
+    const t = (await para("Visit"))[0];
+    assert.ok(!t.includes("website") && t.includes("read page 7"), t);
+    assert.deepStrictEqual(await H.consistent(), []);
+  });
+
+  await check("double-click a word and type over it", async () => {
+    await H.clickIn("Spaces", 2);
+    await H.type("Gaps");
+    const t = (await H.texts()).find((s) => s.includes("double, nbsp"));
+    assert.ok(t.startsWith("Gaps"), JSON.stringify(t));
+    assert.deepStrictEqual(await H.consistent(), []);
+  });
+
+  await check("triple-click then Ctrl+B bolds only that paragraph", async () => {
+    await H.clickIn("Step two", 3);
+    await H.key("Control+b");
+    const x = await H.xml();
+    const i = x.indexOf("Step two"), next = x.indexOf("A table");
+    assert.ok(/<w:b\/>/.test(x.slice(x.lastIndexOf("<w:p", i), i)), "Step two is bold");
+    assert.ok(!/<w:b\/>/.test(x.slice(x.lastIndexOf("<w:p", next), next)), "the heading after it is untouched");
+    assert.deepStrictEqual(await H.consistent(), []);
+  });
+
+  await check("a native edit that runs two paragraphs together is rolled back", async () => {
+    await H.caret("Second bullet", 6);
+    await H.type("x");
+    const before = await H.texts();
+    const n = errors.length;
+    // what Chrome does when its own delete runs one list item into the next
+    await page.evaluate(() => {
+      const lis = [...document.querySelectorAll("#doc li[data-pid]")];
+      const a = lis.find((l) => l.textContent.startsWith("Secondx")), b = a.nextElementSibling;
+      a.textContent = b.textContent; b.remove();
+      document.getElementById("doc").dispatchEvent(new InputEvent("input", { bubbles: true, inputType: "deleteContentBackward" }));
+    });
+    const ts = await H.texts();
+    assert.strictEqual(ts.length, before.length);
+    assert.ok(ts.includes("Second bullet") && ts.includes("Third bullet") && ts.filter((t) => t === "Third bullet").length === 1, ts.join(" | "));
+    assert.strictEqual(await page.evaluate(() => [...document.querySelectorAll("#doc li[data-pid]")].filter((l) => /^(Second|Third) bullet$/.test(l.textContent)).length), 2);
+    assert.ok(errors.slice(n).some((e) => /rolled back/.test(e)), "rolled back");
+    errors.splice(n);
+    assert.deepStrictEqual(await H.consistent(), []);
+  });
+
+  await check("undo all of it returns the exact original", async () => {
+    for (let i = 0; i < 40; i++) await H.key("Control+z");
+    assert.strictEqual(await H.xml(), fresh);
   });
 
   await page.screenshot({ path: path.join(OUT, "edit-mode.png") });
