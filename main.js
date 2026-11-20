@@ -9,8 +9,8 @@ let ready = false;
 let dirty = false;      // unsaved edits in the window
 let closing = false;    // the user already agreed to close
 
-function docxFromArgs(argv) {
-  return argv.slice(1).find((a) => /\.(docx|docm|dotx)$/i.test(a) && fs.existsSync(a)) || null;
+function docFromArgs(argv) {
+  return argv.slice(1).find((a) => /\.(docx|docm|dotx|pdf)$/i.test(a) && fs.existsSync(a)) || null;
 }
 
 function sendFile(file) {
@@ -31,7 +31,7 @@ if (!gotLock) app.quit();
 else {
   app.on("second-instance", (_e, argv) => {
     if (win) { if (win.isMinimized()) win.restore(); win.focus(); }
-    sendFile(docxFromArgs(argv));
+    sendFile(docFromArgs(argv));
   });
 
   app.whenReady().then(() => {
@@ -51,7 +51,7 @@ else {
     win.loadFile(path.join(__dirname, "app", "index.html"));
     win.webContents.on("did-finish-load", () => {
       ready = true;
-      const f = pending || docxFromArgs(process.argv);
+      const f = pending || docFromArgs(process.argv);
       pending = null;
       if (f) sendFile(f);
     });
@@ -81,9 +81,13 @@ else {
 
   ipcMain.handle("open-dialog", async () => {
     const r = await dialog.showOpenDialog(win, {
-      title: "Open a Word document",
+      title: "Open a document",
       properties: ["openFile"],
-      filters: [{ name: "Word documents", extensions: ["docx", "docm", "dotx"] }]
+      filters: [
+        { name: "Documents", extensions: ["docx", "docm", "dotx", "pdf"] },
+        { name: "Word documents", extensions: ["docx", "docm", "dotx"] },
+        { name: "PDFs", extensions: ["pdf"] }
+      ]
     });
     if (!r.canceled && r.filePaths[0]) sendFile(r.filePaths[0]);
   });
