@@ -599,6 +599,7 @@ body.focus .pdf-dock:hover, body.focus .pdf-dock:focus-within { opacity: 1; tran
 .toc a[data-page] .pg { flex: none; font-size: 11.5px; color: var(--muted); font-variant-numeric: tabular-nums; }
 .toc a.active .pg { color: var(--accent); }
 @media (max-width: 980px) { .pdf-view { left: 0; } }
+body.view-pdf .toast { bottom: calc(80px + env(safe-area-inset-bottom, 0px)); }
 
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { transition: none !important; animation: none !important; }
