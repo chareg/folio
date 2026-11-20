@@ -23,12 +23,15 @@
   --body-face: var(--serif);
   --bar-h: 56px;
   --img-mat: transparent; --img-pad: 0px; --img-r: 0px;
+  /* PDF pages: the paper and ink each mood recolours them into, and the desk they sit on */
+  --page: #ffffff; --ink: #1d1a26; --desk: #eeebf2;
 }
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme="light"]) {
     --bg: #15131b; --bg-raise: #1d1a25; --fg: #e8e3ee; --fg-soft: #c3bccd; --muted: #8e879a;
     --rule: #2e2a38; --accent: #f08bbe; --accent-soft: #3a2232; --select: #5a2b45; --img-mat: #f5f3f8; --img-pad: 4px; --img-r: 6px;
     --shadow: 0 1px 2px rgb(0 0 0 / .4), 0 10px 30px rgb(0 0 0 / .45);
+    --page: #201c29; --ink: #e3dde9; --desk: #100e15;
     color-scheme: dark;
   }
 }
@@ -36,6 +39,7 @@
   --bg: #15131b; --bg-raise: #1d1a25; --fg: #e8e3ee; --fg-soft: #c3bccd; --muted: #8e879a;
   --rule: #2e2a38; --accent: #f08bbe; --accent-soft: #3a2232; --select: #5a2b45; --img-mat: #f5f3f8; --img-pad: 4px; --img-r: 6px;
   --shadow: 0 1px 2px rgb(0 0 0 / .4), 0 10px 30px rgb(0 0 0 / .45);
+  --page: #201c29; --ink: #e3dde9; --desk: #100e15;
   color-scheme: dark;
 }
 /* Moods the reader picks override the host theme */
@@ -44,17 +48,20 @@ html:root[data-mood="paper"] {
   --rule: #e6e2ec; --accent: #a3346e; --accent-soft: #f6e6ef; --select: #f3d5e4;
   --shadow: 0 1px 2px rgb(29 26 38 / .06), 0 8px 28px rgb(29 26 38 / .08);
   color-scheme: light; --img-mat: transparent; --img-pad: 0px; --img-r: 0px;
+  --page: #ffffff; --ink: #1d1a26; --desk: #eeebf2;
 }
 html:root[data-mood="mist"] {
   --bg: #edf1ec; --bg-raise: #f6f8f5; --fg: #1c2620; --fg-soft: #3e4b43; --muted: #6c7a71;
   --rule: #d5ddd5; --accent: #2b6a55; --accent-soft: #dbe8e0; --select: #c7dfd1; --img-mat: transparent; --img-pad: 0px; --img-r: 0px;
   --shadow: 0 1px 2px rgb(28 38 32 / .06), 0 8px 28px rgb(28 38 32 / .08);
+  --page: #f6f8f5; --ink: #1c2620; --desk: #e1e7e0;
   color-scheme: light;
 }
 html:root[data-mood="night"] {
   --bg: #15131b; --bg-raise: #1d1a25; --fg: #e8e3ee; --fg-soft: #c3bccd; --muted: #8e879a;
   --rule: #2e2a38; --accent: #f08bbe; --accent-soft: #3a2232; --select: #5a2b45; --img-mat: #f5f3f8; --img-pad: 4px; --img-r: 6px;
   --shadow: 0 1px 2px rgb(0 0 0 / .4), 0 10px 30px rgb(0 0 0 / .45);
+  --page: #201c29; --ink: #e3dde9; --desk: #100e15;
   color-scheme: dark;
 }
 
@@ -508,6 +515,88 @@ body.is-editing .endmark { opacity: .25; }
   .dock-save, .dock-done { padding: 0 11px; }
 }
 
+/* ---------- PDFs ---------- */
+.pdf-only { display: none; }
+body.view-pdf .pop .pdf-only { display: block; }
+body.view-pdf .pop .docx-only, body.view-pdf #editBtn { display: none; }
+body.view-pdf main .column { display: none; }
+html:root body.view-pdf { overflow: hidden; }
+.pop-note { margin: 8px 2px 0; color: var(--muted); font-size: 12px; line-height: 1.45; }
+.pdf-view {
+  position: fixed; z-index: 5; right: 0; bottom: 0; left: 270px;
+  top: calc(var(--bar-h) + env(safe-area-inset-top, 0px));
+  background: var(--desk); transition: background-color .35s ease, top .3s ease, left .3s ease;
+}
+body.view-pdf.focus .pdf-view { top: 0; left: 0; }
+.pdf-scroll { position: absolute; inset: 0; overflow: auto; overscroll-behavior: contain; outline: none; }
+.pdf-pages { position: relative; transform-origin: 0 0; padding: 28px 0 96px; margin: 0 auto; }
+.pdf-page {
+  position: relative; margin: 0 auto 16px; background: var(--page); border-radius: 3px; overflow: hidden;
+  box-shadow: 0 1px 2px rgb(29 26 38 / .08), 0 10px 30px rgb(29 26 38 / .1);
+  transition: background-color .35s ease;
+}
+body.pages-original .pdf-page { background: #fff; }
+html:root[data-mood="night"] .pdf-page { box-shadow: 0 0 0 1px rgb(255 255 255 / .05), 0 12px 32px rgb(0 0 0 / .5); }
+@media (prefers-color-scheme: dark) {
+  html:root:not([data-mood]) .pdf-page { box-shadow: 0 0 0 1px rgb(255 255 255 / .05), 0 12px 32px rgb(0 0 0 / .5); }
+}
+.pdf-page canvas { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
+.pdf-page canvas.fresh { animation: page-in .22s ease; }
+@keyframes page-in { from { opacity: 0; } }
+.pdf-page .num {
+  position: absolute; inset: 0; display: grid; place-items: center; color: var(--muted);
+  font-family: var(--serif); font-style: italic; font-size: 26px; opacity: .45;
+}
+.pdf-page .links { position: absolute; inset: 0; z-index: 3; pointer-events: none; }
+.pdf-page .links a { position: absolute; display: block; border-radius: 3px; pointer-events: auto; transition: background-color .15s ease; }
+.pdf-page .links a:hover { background: color-mix(in srgb, var(--accent) 16%, transparent); }
+/* the invisible text layer, for selecting and copying (after pdf.js's own viewer styles) */
+.pdf-page .textLayer {
+  position: absolute; inset: 0; overflow: clip; line-height: 1; z-index: 2;
+  text-size-adjust: none; forced-color-adjust: none; transform-origin: 0 0; caret-color: CanvasText;
+}
+.pdf-page .textLayer :is(span, br) { color: transparent; position: absolute; white-space: pre; cursor: text; transform-origin: 0% 0%; }
+.pdf-page .textLayer span.markedContent { top: 0; height: 0; }
+.pdf-page .textLayer span[role="img"] { user-select: none; cursor: default; }
+.pdf-page .textLayer ::selection { background: color-mix(in srgb, var(--accent) 34%, transparent); }
+.pdf-page .textLayer br::selection { background: transparent; }
+.pdf-page .textLayer .endOfContent { display: block; position: absolute; inset: 100% 0 0; z-index: 0; cursor: default; user-select: none; }
+.pdf-page .textLayer.selecting .endOfContent { top: 0; }
+
+.pdf-dock {
+  position: absolute; left: 50%; bottom: calc(18px + env(safe-area-inset-bottom, 0px)); transform: translateX(-50%);
+  display: flex; align-items: center; gap: 2px; padding: 5px;
+  background: color-mix(in srgb, var(--bg-raise) 94%, transparent);
+  backdrop-filter: saturate(1.4) blur(14px); -webkit-backdrop-filter: saturate(1.4) blur(14px);
+  border: 1px solid var(--rule); border-radius: 16px; box-shadow: var(--shadow);
+  font-family: var(--sans); font-size: 13px; color: var(--fg-soft);
+  opacity: .96; transition: opacity .25s ease, transform .25s ease;
+}
+.pdf-dock:hover, .pdf-dock:focus-within { opacity: 1; }
+body.focus .pdf-dock { opacity: 0; transform: translate(-50%, 8px); }
+body.focus .pdf-dock:hover, body.focus .pdf-dock:focus-within { opacity: 1; transform: translateX(-50%); }
+.pdf-pageno { padding: 0 10px 0 8px; font-variant-numeric: tabular-nums; white-space: nowrap; font-weight: 500; color: var(--fg); }
+.pdf-pageno b { font-weight: 500; color: var(--muted); }
+.pdf-zoom {
+  min-width: 58px; height: 32px; border: 0; border-radius: 10px; background: transparent; cursor: pointer;
+  font-variant-numeric: tabular-nums; font-weight: 500; color: var(--fg-soft);
+}
+.pdf-zoom:hover { background: var(--accent-soft); color: var(--fg); }
+.pdf-dock .dock-btn { width: 32px; height: 32px; font-family: var(--sans); }
+
+.goto { display: flex; align-items: center; gap: 8px; margin: 0 0 18px; color: var(--muted); font-size: 12.5px; }
+.goto label { display: flex; align-items: center; gap: 8px; }
+.goto input {
+  width: 64px; height: 30px; padding: 0 8px; border: 1px solid var(--rule); border-radius: 8px;
+  background: var(--bg); color: var(--fg); font: inherit; font-variant-numeric: tabular-nums;
+}
+.goto input:focus { outline: none; border-color: var(--accent); }
+.toc a[data-page] { display: flex; align-items: baseline; gap: 10px; }
+.toc a[data-page] .t { flex: 1; min-width: 0; }
+.toc a[data-page] .pg { flex: none; font-size: 11.5px; color: var(--muted); font-variant-numeric: tabular-nums; }
+.toc a.active .pg { color: var(--accent); }
+@media (max-width: 980px) { .pdf-view { left: 0; } }
+
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { transition: none !important; animation: none !important; }
   html { scroll-behavior: auto !important; }
@@ -554,7 +643,15 @@ body.is-editing .endmark { opacity: .25; }
         <button data-mood="night" class="mood-swatch"><i style="background:#15131b;color:#f08bbe">a</i>Night</button>
       </div>
     </div>
-    <div>
+    <div class="pdf-only">
+      <h3>Pages</h3>
+      <div class="seg" id="pagesSeg">
+        <button data-pages="themed">In my mood</button>
+        <button data-pages="original">As printed</button>
+      </div>
+      <p class="pop-note" id="pagesNote"></p>
+    </div>
+    <div class="docx-only">
       <h3>Text size</h3>
       <div class="size-row">
         <button class="small" id="sizeDown" aria-label="Smaller text">A</button>
@@ -562,14 +659,14 @@ body.is-editing .endmark { opacity: .25; }
         <button class="big" id="sizeUp" aria-label="Larger text">A</button>
       </div>
     </div>
-    <div>
+    <div class="docx-only">
       <h3>Typeface</h3>
       <div class="seg" id="faceSeg">
         <button data-face="serif" style="font-family:var(--serif);font-size:15px">Serif</button>
         <button data-face="sans" style="font-family:var(--sans)">Sans</button>
       </div>
     </div>
-    <div>
+    <div class="docx-only">
       <h3>Column</h3>
       <div class="seg" id="widthSeg">
         <button data-width="56ch">Narrow</button>
@@ -583,6 +680,7 @@ body.is-editing .endmark { opacity: .25; }
 <div class="shell">
   <aside class="rail" id="rail" aria-label="Contents">
     <h2>Contents</h2>
+    <form class="goto" id="gotoForm" hidden><label>Go to page <input id="gotoInput" type="number" min="1" inputmode="numeric" aria-label="Page number"></label><span id="gotoOf"></span></form>
     <ol class="toc" id="toc"></ol>
     <p class="rail-note" id="tocNote" hidden></p>
   </aside>
@@ -596,10 +694,21 @@ body.is-editing .endmark { opacity: .25; }
   </main>
 </div>
 
+<section class="pdf-view" id="pdfView" hidden aria-label="PDF pages">
+  <div class="pdf-scroll" id="pdfScroll" tabindex="-1"><div class="pdf-pages" id="pdfPages"></div></div>
+  <div class="pdf-dock" id="pdfDock">
+    <span class="pdf-pageno" id="pdfPageNo" aria-live="polite"></span>
+    <span class="dock-sep"></span>
+    <button class="dock-btn" id="zoomOut" title="Zoom out (Ctrl+&minus;)" aria-label="Zoom out"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M6 12h12"/></svg></button>
+    <button class="pdf-zoom" id="zoomReset" title="Fit to the window (Ctrl+0)">100%</button>
+    <button class="dock-btn" id="zoomIn" title="Zoom in (Ctrl+=)" aria-label="Zoom in"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M6 12h12M12 6v12"/></svg></button>
+  </div>
+</section>
+
 <div class="drop" id="drop" hidden>
   <div class="drop-card">
     <strong>Let it go</strong>
-    <span>Drop your .docx to start reading</span>
+    <span id="dropHint">Drop your .docx to start reading</span>
   </div>
 </div>
 <div class="toast" id="toast" hidden role="status"></div>
@@ -2495,7 +2604,7 @@ body.is-editing .endmark { opacity: .25; }
   var docEl = $("doc"), tocEl = $("toc"), metaEl = $("meta"), progressEl = $("progress");
 
   /* ---------- preferences ---------- */
-  var prefs = { mood: "auto", size: 19, face: "serif", width: "64ch" };
+  var prefs = { mood: "auto", size: 19, face: "serif", width: "64ch", pages: "themed" };
   try { var saved = JSON.parse(localStorage.getItem("folio-prefs") || "null"); if (saved) Object.assign(prefs, saved); } catch (e) {}
   function savePrefs() { try { localStorage.setItem("folio-prefs", JSON.stringify(prefs)); } catch (e) {} }
 
@@ -2506,11 +2615,17 @@ body.is-editing .endmark { opacity: .25; }
     root.style.setProperty("--body-face", prefs.face === "sans" ? "var(--sans)" : "var(--serif)");
     docEl.classList.toggle("is-sans", prefs.face === "sans");
     $("sizeOut").textContent = prefs.size + " px";
-    [["moodSeg", "mood"], ["faceSeg", "face"], ["widthSeg", "width"]].forEach(function (p) {
+    [["moodSeg", "mood"], ["faceSeg", "face"], ["widthSeg", "width"], ["pagesSeg", "pages"]].forEach(function (p) {
       $(p[0]).querySelectorAll("button").forEach(function (b) {
         b.setAttribute("aria-pressed", String(b.dataset[p[1]] === prefs[p[1]]));
       });
     });
+    document.body.classList.toggle("pages-original", prefs.pages === "original");
+    var m = prefs.mood === "auto" ? (matchMedia("(prefers-color-scheme: dark)").matches ? "night" : "paper") : prefs.mood;
+    $("pagesNote").textContent = prefs.pages === "original" ? "Pages look exactly as they were printed."
+      : m === "night" ? "Pages turn dark with soft light ink. Photos keep their colours."
+      : "Pages take on the " + m.charAt(0).toUpperCase() + m.slice(1) + " paper and ink. Photos keep their colours.";
+    if (typeof applyPdfTheme === "function") applyPdfTheme();
     try { window.dispatchEvent(new CustomEvent("folio:prefs", { detail: prefs })); } catch (e) {}
   }
   function bindSeg(id, key) {
@@ -2519,7 +2634,8 @@ body.is-editing .endmark { opacity: .25; }
       prefs[key] = b.dataset[key]; applyPrefs(); savePrefs(); updateProgress();
     });
   }
-  bindSeg("moodSeg", "mood"); bindSeg("faceSeg", "face"); bindSeg("widthSeg", "width");
+  bindSeg("moodSeg", "mood"); bindSeg("faceSeg", "face"); bindSeg("widthSeg", "width"); bindSeg("pagesSeg", "pages");
+  matchMedia("(prefers-color-scheme: dark)").addEventListener("change", function () { if (prefs.mood === "auto") applyPrefs(); });
   $("sizeDown").onclick = function () { prefs.size = Math.max(14, prefs.size - 1); applyPrefs(); savePrefs(); };
   $("sizeUp").onclick = function () { prefs.size = Math.min(28, prefs.size + 1); applyPrefs(); savePrefs(); };
   applyPrefs();
@@ -2583,9 +2699,11 @@ body.is-editing .endmark { opacity: .25; }
 
   function openFile(file) {
     var name = file.name || "Untitled";
+    var looksPdf = /\.pdf$/i.test(name) || file.type === "application/pdf";
     if (/\.doc$/i.test(name)) { toast("That's an older .doc file. Open it in Word, save it as .docx, then drop it here."); return; }
-    if (!/\.(docx|docm|dotx)$/i.test(name) && file.type.indexOf("wordprocessingml") === -1) {
-      toast("Folio reads Word .docx files. " + name + " doesn't look like one."); return;
+    if (looksPdf && !canPdf) { toast("PDFs open in Folio for Windows. Here, Folio reads Word .docx files."); return; }
+    if (!looksPdf && !/\.(docx|docm|dotx)$/i.test(name) && file.type.indexOf("wordprocessingml") === -1) {
+      toast("Folio reads Word .docx files" + (canPdf ? " and PDFs. " : ". ") + name + " doesn't look like " + (canPdf ? "either." : "one.")); return;
     }
     file.arrayBuffer().then(function (buf) { openBuffer(buf, name); });
   }
@@ -2594,8 +2712,10 @@ body.is-editing .endmark { opacity: .25; }
     var ask = editor ? editor.confirmDiscard("want to open " + name) : Promise.resolve(true);
     return ask.then(function (go) {
       if (!go) return;
-      document.body.classList.add("loading");
       info = info || {};
+      if (isPdf(buf)) return canPdf ? openPdf(buf, name, info) : toast("PDFs open in Folio for Windows. Here, Folio reads Word .docx files.");
+      if (view === "pdf") closePdf();
+      document.body.classList.add("loading");
       current = { name: name, isSample: !!info.isSample };
       var prep = editor ? editor.load(buf, name, info) : Promise.resolve(buf);
       return prep.then(function (b) { return render(b, name, !!info.isSample); })
@@ -2603,6 +2723,162 @@ body.is-editing .endmark { opacity: .25; }
         .then(function () { document.body.classList.remove("loading"); });
     });
   }
+
+
+  /* ---------- PDFs (Folio for Windows) ---------- */
+  // The desktop app provides window.folioLoadPdf, which loads pdf.js and Folio's PDF view on demand.
+  var canPdf = typeof window.folioLoadPdf === "function";
+  var view = "docx", pdf = null, pdfModule = null;
+  if (canPdf) {
+    fileInput.accept = ".docx,.pdf,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document";
+    $("dropHint").textContent = "Drop a .docx or PDF to start reading";
+    $("openBtn").title = "Open a document (Ctrl+O)";
+  }
+  function isPdf(buf) {
+    var b = new Uint8Array(buf, 0, Math.min(1024, buf.byteLength));
+    for (var i = 0; i + 4 < b.length; i++) if (b[i] === 37 && b[i + 1] === 80 && b[i + 2] === 68 && b[i + 3] === 70 && b[i + 4] === 45) return true; // %PDF-
+    return false;
+  }
+  function prettyName(name) { return (name || "Document").replace(/\.(pdf|docx|docm|dotx)$/i, "").replace(/[_]+/g, " ").trim(); }
+  function setView(v) {
+    view = v;
+    document.body.classList.toggle("view-pdf", v === "pdf");
+    $("pdfView").hidden = v !== "pdf";
+    $("gotoForm").hidden = v !== "pdf";
+    progressEl.style.transform = "scaleX(0)";
+  }
+  function cssVar(n) { return getComputedStyle(root).getPropertyValue(n).trim(); }
+  function applyPdfTheme() {
+    if (pdf && view === "pdf") pdf.setTheme(cssVar("--page"), cssVar("--ink"), prefs.pages === "original" ? "original" : "themed");
+  }
+  function loadPdfModule() {
+    if (!pdfModule) pdfModule = window.folioLoadPdf().catch(function (e) { pdfModule = null; throw e; });
+    return pdfModule;
+  }
+
+  // Remember where you were in each PDF.
+  var PLACES = "folio-pdf-places", placeTimer = 0;
+  function places() { try { return JSON.parse(localStorage.getItem(PLACES) || "{}") || {}; } catch (e) { return {}; } }
+  function savePlace() {
+    clearTimeout(placeTimer);
+    if (view !== "pdf" || !pdf || !pdf.pageCount || !current.key) return;
+    var all = places();
+    all[current.key] = { pos: pdf.position(), at: Date.now() };
+    var keys = Object.keys(all).sort(function (a, b) { return all[b].at - all[a].at; });
+    keys.slice(80).forEach(function (k) { delete all[k]; });
+    try { localStorage.setItem(PLACES, JSON.stringify(all)); } catch (e) {}
+  }
+  window.addEventListener("beforeunload", savePlace);
+  document.addEventListener("visibilitychange", function () { if (document.hidden) savePlace(); });
+
+  function openPdf(buf, name, info) {
+    var prev = view, opened = false;
+    document.body.classList.add("loading");
+    savePlace();
+    return loadPdfModule().then(function (mod) {
+      if (!pdf) {
+        pdf = new mod.PdfView({
+          scroller: $("pdfScroll"), container: $("pdfPages"),
+          onPage: onPdfPage,
+          onLink: function (url) { window.open(url, "_blank", "noopener"); }
+        });
+        pdf.onZoom = function (z) { $("zoomReset").textContent = Math.round(z * 100) + "%"; };
+      }
+      return pdf.close();
+    }).then(function () {
+      setView("pdf");
+      applyPdfTheme();
+      return pdf.open(buf.slice(0));
+    }).then(function (r) {
+      opened = true;
+      // The Word document (and any editing session) is put away.
+      if (editor) editor.load(new ArrayBuffer(0), name, {}).then(function () { editor.attach(false); });
+      docEl.innerHTML = ""; metaEl.innerHTML = ""; spyTargets = []; activeId = null;
+      current = { name: name, isSample: false, kind: "pdf", key: info.path || name };
+      $("docname").textContent = prettyName(name);
+      document.title = prettyName(name) + " · Folio";
+      document.body.classList.remove("rail-open");
+      $("zoomReset").textContent = "100%";
+      $("gotoOf").textContent = "of " + r.pages;
+      $("gotoInput").max = r.pages;
+      var place = places()[current.key];
+      $("pdfScroll").scrollTop = 0;
+      if (place && place.pos && place.pos.page < r.pages) pdf.restore(place.pos);
+      if (pdf.current > 0) toast("Back where you left off, on page " + (pdf.current + 1) + ".", { action: { label: "Start over", run: function () { if (pdf) pdf.goTo(0, true); } } });
+      $("pdfScroll").focus({ preventScroll: true });
+      buildPdfToc();
+    }).catch(function (err) {
+      console.error(err);
+      if (!opened) {
+        if (prev === "pdf") { setView("docx"); openBuffer(b64ToBuf(SAMPLE_B64), "Sample document", { isSample: true }); }
+        else setView(prev);
+      }
+      var pw = err && (err.name === "PasswordException" || /password/i.test(err.message || ""));
+      toast(pw ? "This PDF is password-protected. Folio can't unlock it yet." : "Couldn't read " + prettyName(name) + ". The PDF may be damaged.");
+    }).then(function () { document.body.classList.remove("loading"); });
+  }
+  function closePdf() {
+    savePlace();
+    setView("docx");
+    if (pdf) pdf.close();
+    tocEl.innerHTML = "";
+  }
+
+  var shownPage = -1;
+  function onPdfPage(i, n) {
+    $("pdfPageNo").innerHTML = (i + 1) + " <b>/ " + n + "</b>";
+    if (i !== shownPage) { shownPage = i; markTocPage(i); }
+    pdfProgress();
+    clearTimeout(placeTimer); placeTimer = setTimeout(savePlace, 600);
+  }
+  function pdfProgress() {
+    var s = $("pdfScroll"), max = s.scrollHeight - s.clientHeight;
+    progressEl.style.transform = "scaleX(" + (max > 0 ? Math.min(1, Math.max(0, s.scrollTop / max)) : 1) + ")";
+  }
+  function buildPdfToc() {
+    var note = $("tocNote");
+    tocEl.innerHTML = ""; note.hidden = true; shownPage = -1;
+    var mine = pdf.doc;
+    pdf.outline().then(function (items) {
+      if (!pdf || pdf.doc !== mine) return;
+      if (!items.length) {
+        tocEl.innerHTML = '<li><p class="toc-empty">This PDF has no bookmarks. Use Go to page, or just scroll.</p></li>';
+        return;
+      }
+      items.forEach(function (it) {
+        var li = document.createElement("li"); li.className = "l" + it.level;
+        var a = document.createElement("a"); a.href = "#";
+        var t = document.createElement("span"); t.className = "t"; t.textContent = it.title; a.appendChild(t);
+        if (it.page != null) { a.dataset.page = it.page; var pg = document.createElement("span"); pg.className = "pg"; pg.textContent = it.page + 1; a.appendChild(pg); }
+        a.onclick = function (e) {
+          e.preventDefault(); document.body.classList.remove("rail-open");
+          if (it.page != null && pdf) pdf.goTo(it.page, true);
+          else if (it.url) window.open(it.url, "_blank", "noopener");
+        };
+        li.appendChild(a); tocEl.appendChild(li);
+      });
+      markTocPage(pdf.current);
+    });
+  }
+  function markTocPage(i) {
+    // the first bookmark on this page, or else the last one before it
+    var best = null, here = null, links = tocEl.querySelectorAll("a[data-page]");
+    links.forEach(function (a) { var p = +a.dataset.page; if (p < i) best = a; else if (p === i && !here) here = a; });
+    best = here || best;
+    links.forEach(function (a) { a.classList.toggle("active", a === best); });
+    if (best && !document.body.classList.contains("rail-open")) {
+      var r = best.getBoundingClientRect(), rr = $("rail").getBoundingClientRect();
+      if (r.top < rr.top + 40 || r.bottom > rr.bottom - 40) best.scrollIntoView({ block: "nearest" });
+    }
+  }
+  $("gotoForm").onsubmit = function (e) {
+    e.preventDefault();
+    var n = parseInt($("gotoInput").value, 10);
+    if (pdf && n > 0) { pdf.goTo(n - 1); document.body.classList.remove("rail-open"); $("gotoInput").value = ""; $("pdfScroll").focus({ preventScroll: true }); }
+  };
+  $("zoomIn").onclick = function () { if (pdf) pdf.zoomBy(1); };
+  $("zoomOut").onclick = function () { if (pdf) pdf.zoomBy(-1); };
+  $("zoomReset").onclick = function () { if (pdf) pdf.setZoom(1); };
 
   /* ---------- rendering ---------- */
   var STYLE_MAP = [
@@ -2812,6 +3088,7 @@ body.is-editing .endmark { opacity: .25; }
   var spyTargets = [], ticking = false, activeId = null;
   function updateProgress() {
     ticking = false;
+    if (view === "pdf") { pdfProgress(); return; }
     var max = document.documentElement.scrollHeight - innerHeight;
     var p = max > 0 ? Math.min(1, Math.max(0, scrollY / max)) : 1;
     progressEl.style.transform = "scaleX(" + p + ")";
@@ -2839,6 +3116,14 @@ body.is-editing .endmark { opacity: .25; }
   /* ---------- keyboard ---------- */
   document.addEventListener("keydown", function (e) {
     if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "o") { e.preventDefault(); fileInput.click(); return; }
+    if (view === "pdf" && (e.ctrlKey || e.metaKey) && !e.altKey) {
+      var k = e.key.toLowerCase();
+      if (k === "=" || k === "+") { e.preventDefault(); if (pdf) pdf.zoomBy(1); return; }
+      if (k === "-" || k === "_") { e.preventDefault(); if (pdf) pdf.zoomBy(-1); return; }
+      if (k === "0") { e.preventDefault(); if (pdf) pdf.setZoom(1); return; }
+      if (k === "e") { e.preventDefault(); toast("PDFs are read-only in Folio. Word documents can be edited."); return; }
+      if (k === "s") { e.preventDefault(); return; }
+    }
     if ((e.ctrlKey || e.metaKey) && !e.altKey && e.key.toLowerCase() === "e") { e.preventDefault(); if (editor) editor.toggle(); return; }
     if ((e.ctrlKey || e.metaKey) && !e.altKey && e.key.toLowerCase() === "s") {
       e.preventDefault();
@@ -2849,8 +3134,8 @@ body.is-editing .endmark { opacity: .25; }
     if (e.key === "Escape") { setPop(false); setFocus(false); document.body.classList.remove("rail-open"); }
     if (!e.ctrlKey && !e.metaKey && !e.altKey) {
       if (e.key === "f" || e.key === "F") setFocus(!document.body.classList.contains("focus"));
-      if (e.key === "+" || e.key === "=") $("sizeUp").click();
-      if (e.key === "-") $("sizeDown").click();
+      if (e.key === "+" || e.key === "=") { if (view === "pdf") { if (pdf) pdf.zoomBy(1); } else $("sizeUp").click(); }
+      if (e.key === "-") { if (view === "pdf") { if (pdf) pdf.zoomBy(-1); } else $("sizeDown").click(); }
     }
   });
 
@@ -2860,7 +3145,7 @@ body.is-editing .endmark { opacity: .25; }
     for (var i = 0; i < len; i++) bytes[i] = bin.charCodeAt(i);
     return bytes.buffer;
   }
-  window.__folio = { openBuffer: openBuffer, toast: toast, editor: editor };
+  window.__folio = { openBuffer: openBuffer, toast: toast, editor: editor, get pdf() { return pdf; }, get view() { return view; } };
   openBuffer(b64ToBuf(SAMPLE_B64), "Sample document", { isSample: true });
 })();
 </script>

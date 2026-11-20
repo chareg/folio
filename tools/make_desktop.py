@@ -11,6 +11,9 @@ assert t.count('<!--FOLIO-EDITOR-->') == 1
 web = t.replace('<!--FOLIO-EDITOR-->', '\n'.join('<script>\n' + open(ROOT + f).read().replace('</script', '<\\/script') + '\n</script>' for f in EDITOR))
 open(ROOT + 'web/index.html', 'w').write(web)
 d=t.replace('<!--FOLIO-EDITOR-->', '\n'.join('<script src="%s"></script>' % f[len('app/'):] for f in EDITOR))
+# PDFs are desktop-only: pdf.js and Folio's PDF view load on demand, the first time a PDF opens.
+d=d.replace('<script src="editor/editor.js"></script>', '<script src="editor/editor.js"></script>\n<script>window.folioLoadPdf = function () { return import("./pdf/pdf-view.js"); };</script>', 1)
+assert 'folioLoadPdf' in d
 d=re.sub(r'<link rel="preconnect"[^>]*>\n','',d)
 d=re.sub(r'<link rel="stylesheet" href="https://fonts.googleapis.com[^>]*>','<link rel="stylesheet" href="fonts.css">',d)
 d=d.replace('<meta name="claude:viewport-fit-sides" content="cover">\n','')
@@ -136,7 +139,7 @@ desk_js='''<script>
   pill.onclick = install;
 })();
 </script>'''
-csp='<meta http-equiv="Content-Security-Policy" content="default-src \'self\'; img-src \'self\' data: blob:; style-src \'self\' \'unsafe-inline\'; script-src \'self\' \'unsafe-inline\'; font-src \'self\'; connect-src \'self\' data: blob:">'
+csp='<meta http-equiv="Content-Security-Policy" content="default-src \'self\'; img-src \'self\' data: blob:; style-src \'self\' \'unsafe-inline\'; script-src \'self\' \'unsafe-inline\'; font-src \'self\' data:; connect-src \'self\' data: blob:">'
 head='<!doctype html>\n<html lang="en">\n<head>\n<meta charset="utf-8">\n'+csp+'\n<meta name="viewport" content="width=device-width, initial-scale=1">\n'
 # split title+style (head) from body
 i=d.index('</style>')+len('</style>')

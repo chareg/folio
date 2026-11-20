@@ -1,8 +1,20 @@
 # Folio
 
-A calm, beautiful reader for Word documents on Windows.
+A calm, beautiful reader for Word documents and PDFs on Windows.
 
-Open a `.docx`, or drop one onto the window, and Folio shows it in an easy-to-read layout. You get a contents list, reading progress, and three moods: Paper, Mist and Night. You can adjust the text size, typeface and column width. Your files never leave your computer.
+Open a `.docx` or a PDF, or drop one onto the window, and Folio shows it in an easy-to-read layout. You get a contents list, reading progress, and three moods: Paper, Mist and Night. You can adjust the text size, typeface and column width. Your files never leave your computer.
+
+## PDFs
+
+PDFs open as a continuous column of pages, in your mood. In **Night**, pages turn plum-dark with soft lavender ink, coloured text stays coloured, and photos keep their real colours. Scans and black-and-white diagrams are recoloured like the rest of the page. **Paper** and **Mist** give pages their own paper and ink.
+
+Want the page exactly as it was printed? Open **Appearance** and choose **Pages → As printed**.
+
+- The contents rail shows the PDF's bookmarks and follows along as you read. **Go to page** jumps anywhere.
+- Zoom with the − / + pill at the bottom, Ctrl + mouse wheel, a trackpad pinch, or Ctrl+= and Ctrl+−. Ctrl+0 fits the page to the window again.
+- Select text and copy it as usual. Links work: web links open in your browser, and links inside the PDF jump to their page.
+- Folio remembers which page you were on in each PDF.
+- PDFs are read-only. Password-protected PDFs can't be opened yet.
 
 ## Editing
 
@@ -49,6 +61,8 @@ npm install --no-save @xmldom/xmldom jszip playwright
 python3 test/fixtures/make_fixtures.py   # rebuilds the kitchen-sink test document
 node test/model.test.js                  # the XML editing model
 node test/e2e.js                         # real keystrokes in Chromium, then save and compare
+node test/recolor.test.mjs               # PDF page recolouring
+npm ci && xvfb-run -a node test/pdf.e2e.js   # the PDF reader in the real Electron app (xvfb-run only on Linux)
 ```
 
 ## Layout
@@ -58,10 +72,12 @@ node test/e2e.js                         # real keystrokes in Chromium, then sav
 | `main.js` | Electron main process: window, file opening, updates |
 | `preload.js` | The small, safe bridge between the window and the main process |
 | `app/` | The reader itself: `index.html`, bundled fonts, mammoth.js and JSZip |
+| `app/pdf/` | The PDF view (`pdf-view.js`) and the mood recolouring (`recolor.js`) |
+| `app/vendor/pdfjs/` | pdf.js 4.10.38 (legacy build), its CMaps and standard fonts. Refresh with `tools/vendor_pdfjs.sh` |
 | `app/editor/` | Edit mode: `model.js` edits the document XML in place, `editor.js` runs the page |
 | `test/` | Model tests, browser tests and the fixture generator |
 | `build/` | App icons |
-| `web/index.html` | The browser version of Folio |
+| `web/index.html` | The browser version of Folio (Word documents only; PDFs need the desktop app) |
 | `tools/` | `make_desktop.py` regenerates `app/index.html` from `tools/web-template.html`; `make_sample_docx.py` builds the welcome document |
 
 Folio uses [mammoth.js](https://github.com/mwilliamson/mammoth.js) to turn `.docx` into clean HTML. Exact Word fonts, colours and page layout are swapped for Folio's own typography on purpose.
