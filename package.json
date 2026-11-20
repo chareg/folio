@@ -1,8 +1,8 @@
 {
   "name": "folio-reader",
   "productName": "Folio",
-  "version": "1.1.0",
-  "description": "A calm, beautiful reader for Word documents",
+  "version": "1.2.0",
+  "description": "A calm, beautiful reader for Word documents and PDFs",
   "main": "main.js",
   "author": "Chare",
   "license": "MIT",
@@ -23,7 +23,10 @@
     "appId": "app.folio.reader",
     "productName": "Folio",
     "files": ["main.js", "preload.js", "app/**/*", "package.json"],
-    "fileAssociations": [{ "ext": "docx", "name": "Word Document", "description": "Word Document", "role": "Viewer" }],
+    "fileAssociations": [
+      { "ext": "docx", "name": "Word Document", "description": "Word Document", "role": "Viewer" },
+      { "ext": "pdf", "name": "PDF Document", "description": "PDF Document", "role": "Viewer" }
+    ],
     "win": { "target": ["nsis"], "icon": "build/icon.ico" },
     "nsis": {
       "oneClick": false,
